@@ -22,6 +22,11 @@ pub struct MqttConfig {
     pub port: u16,
     pub username: String,
     pub password: String,
+    /// Connect over TLS (usually port 8883).
+    pub tls: bool,
+    /// PEM file with the CA that signed the broker's certificate. Empty means
+    /// the system's trusted CAs.
+    pub ca_file: String,
     /// Home Assistant's discovery prefix.
     pub discovery_prefix: String,
     pub base_topic: String,
@@ -38,6 +43,8 @@ impl Default for MqttConfig {
             port: 1883,
             username: String::new(),
             password: String::new(),
+            tls: false,
+            ca_file: String::new(),
             discovery_prefix: "homeassistant".into(),
             base_topic: "lightmime".into(),
             node_id: String::new(),

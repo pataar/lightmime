@@ -51,6 +51,8 @@ Values outside the range are clamped. See [Tuning](tuning.md).
 | `enabled` | `false` | Connect to the broker and appear in Home Assistant. |
 | `host`, `port` | `""`, `1883` | The broker. |
 | `username`, `password` | `""` | Broker login, if it needs one. |
+| `tls` | `false` | Connect over TLS. Brokers usually listen for TLS on port 8883. |
+| `ca_file` | `""` | PEM file with the CA that signed the broker's certificate, for a self-signed broker. Empty trusts the system's CAs. |
 | `discovery_prefix` | `"homeassistant"` | Home Assistant's discovery prefix. |
 | `base_topic` | `"lightmime"` | First part of every topic. |
 | `node_id` | the hostname | Names this machine in topics and entity ids. |

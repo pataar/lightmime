@@ -33,6 +33,10 @@ host = "homeassistant.local"
 port = 1883
 username = "lightmime"
 password = "change-me"
+# Use TLS (then usually port 8883). ca_file is the broker's CA in PEM; leave
+# it empty to trust the system's CAs.
+tls = false
+ca_file = ""
 discovery_prefix = "homeassistant"
 base_topic = "lightmime"
 # Defaults to the hostname.

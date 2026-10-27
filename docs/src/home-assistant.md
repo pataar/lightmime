@@ -18,6 +18,9 @@ username = "lightmime"
 password = "change-me"
 ```
 
+For a broker with TLS, set `port = 8883` and `tls = true`, plus `ca_file` if the broker uses a self-signed
+certificate (see [`[mqtt]`](configuration.md#mqtt)).
+
 Then run either the [window](gui.md) (`lightmime gui`) or the [headless daemon](background.md) (`lightmime run`).
 Both connect to the broker. Home Assistant finds a device called **lightmime (&lt;hostname&gt;)**.
 

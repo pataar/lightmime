@@ -4,9 +4,9 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
+use anyhow::{Context, Result, ensure};
 use lightmime_core::{Engine, EngineState, Status, SyncSettings};
-use rumqttc::{AsyncClient, Event, Incoming, LastWill, MqttOptions, QoS};
+use rumqttc::{AsyncClient, Event, Incoming, LastWill, MqttOptions, QoS, Transport};
 use serde_json::{Value, json};
 use tokio::sync::watch;
 
@@ -101,6 +101,9 @@ impl MqttBridge {
             self.config.port,
         );
         options.set_keep_alive(Duration::from_secs(30));
+        if self.config.tls {
+            options.set_transport(self.tls_transport()?);
+        }
         if !self.config.username.is_empty() {
             options.set_credentials(&self.config.username, &self.config.password);
         }
@@ -115,9 +118,10 @@ impl MqttBridge {
         let mut status_rx = self.engine.subscribe();
         let mut last_fps_publish = Instant::now() - FPS_INTERVAL;
         tracing::info!(
-            "connecting to MQTT broker {}:{}",
+            "connecting to MQTT broker {}:{}{}",
             self.config.host,
-            self.config.port
+            self.config.port,
+            if self.config.tls { " over TLS" } else { "" }
         );
 
         loop {
@@ -164,6 +168,30 @@ impl MqttBridge {
             }
         }
         Ok(())
+    }
+
+    fn tls_transport(&self) -> Result<Transport> {
+        if !self.config.ca_file.is_empty() {
+            let ca = std::fs::read(&self.config.ca_file)
+                .with_context(|| format!("reading MQTT CA file {}", self.config.ca_file))?;
+            return Ok(Transport::tls(ca, None, None));
+        }
+        // rumqttc's default TLS config panics when a system certificate fails
+        // to load, so build it here and only warn.
+        let native = rustls_native_certs::load_native_certs();
+        for error in &native.errors {
+            tracing::warn!("skipping a system CA certificate: {error}");
+        }
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add_parsable_certificates(native.certs);
+        ensure!(
+            !roots.is_empty(),
+            "no system CA certificates found; set ca_file in [mqtt]"
+        );
+        let config = rustls::ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        Ok(Transport::tls_with_config(config.into()))
     }
 
     /// Publish discovery configs, subscribe to commands and push current state.
