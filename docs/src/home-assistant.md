@@ -24,6 +24,18 @@ certificate (see [`[mqtt]`](configuration.md#mqtt)).
 Then run either the [window](gui.md) (`lightmime gui`) or the [headless daemon](background.md) (`lightmime run`).
 Both connect to the broker. Home Assistant finds a device called **lightmime (&lt;hostname&gt;)**.
 
+## Security
+
+lightmime trusts the broker: anyone who can publish to `lightmime/<node>/+/set` can start and stop syncing and
+move the sliders, and anyone who can subscribe can read the status, including error messages. MQTT never reaches
+the bridge keys or anything else on the machine. To keep it that way:
+
+- Give lightmime its own broker user and don't allow anonymous clients (Mosquitto 2 refuses them by default).
+- If the broker supports ACLs, limit that user to `lightmime/#` and `homeassistant/#`, and limit who else can
+  write to `lightmime/#`.
+- Use TLS when the broker is reachable from anywhere but your own network; otherwise the password is sent in
+  clear.
+
 ## Entities
 
 `<node>` is the machine's hostname in lowercase, with anything but letters and digits replaced by `_`
