@@ -5,6 +5,7 @@
 | Flatpak repository | `flatpak install --user lightmime io.github.pataar.lightmime` after adding the remote, see [below](#flatpak) |
 | Flatpak bundle | `lightmime-<arch>.flatpak` from the [latest release](https://github.com/pataar/lightmime/releases/latest) |
 | Binary | `lightmime-<arch>-unknown-linux-gnu.tar.xz` from the [latest release](https://github.com/pataar/lightmime/releases/latest), see [below](#binary) |
+| crates.io | `cargo install --locked lightmime`, see [below](#from-source) |
 | From source | `cargo install --path crates/lightmime`, see [below](#from-source) |
 
 Releases are built for x86_64 and aarch64.
@@ -67,6 +68,12 @@ development files of the libraries above:
 | Debian, Ubuntu | `build-essential pkg-config libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-pipewire libssl-dev libxkbcommon-x11-dev libwayland-dev libfontconfig-dev` |
 
 ```sh
+cargo install --locked lightmime
+```
+
+or from a checkout:
+
+```sh
 git clone https://github.com/pataar/lightmime
 cd lightmime
 cargo install --locked --path crates/lightmime
@@ -75,7 +82,7 @@ cargo install --locked --path crates/lightmime
 For a machine that only runs headless (no window or tray), leave the GUI out:
 
 ```sh
-cargo install --locked --path crates/lightmime --no-default-features
+cargo install --locked lightmime --no-default-features
 ```
 
 ## Desktop integration

@@ -1,7 +1,6 @@
 [workspace]
-# Not on crates.io: release-plz only bumps the version, writes the changelog and tags. The tag starts release.yml,
-# which builds the binaries and Flatpak bundles and creates the GitHub release.
-publish = false
+# release-plz bumps the version, writes the changelog, publishes the crates to crates.io and tags. The tag starts
+# release.yml, which builds the binaries and Flatpak bundles and creates the GitHub release.
 git_release_enable = false
 git_tag_name = "v{{ version }}"
 pr_labels = ["release"]

@@ -7,3 +7,7 @@ version = "0.1.0"
 edition = "2024"
 repository = "https://github.com/pataar/lightmime"
 license = "MIT OR Apache-2.0"
+homepage = "https://lightmime.pataar.nl"
+rust-version = "1.99"
+keywords = ["philips-hue", "ambilight", "wayland", "pipewire", "screen-capture"]
+categories = ["multimedia", "command-line-utilities"]
