@@ -128,6 +128,9 @@ impl MqttBridge {
         let mut status_rx = self.engine.subscribe();
         let mut last_fps_publish = Instant::now() - FPS_INTERVAL;
         let mut save_pending = false;
+        /* rumqttc only drains its request queue while connected, so publishing during an outage fills it and the next
+        publish blocks this loop, which then never polls the event loop to reconnect. `announce` catches up instead. */
+        let mut connected = false;
         let save_timer = tokio::time::sleep(Duration::ZERO);
         tokio::pin!(save_timer);
         tracing::info!(
@@ -142,6 +145,7 @@ impl MqttBridge {
                 event = events.poll() => match event {
                     Ok(Event::Incoming(Incoming::ConnAck(_))) => {
                         tracing::info!("connected to MQTT");
+                        connected = true;
                         self.announce(&client).await?;
                     }
                     Ok(Event::Incoming(Incoming::Publish(message))) => {
@@ -154,6 +158,7 @@ impl MqttBridge {
                     }
                     Ok(_) => {}
                     Err(e) => {
+                        connected = false;
                         tracing::warn!("MQTT connection error: {e}; retrying in 5 s");
                         // There is no connection to say goodbye on, so a
                         // shutdown during the wait just ends the loop.
@@ -190,6 +195,9 @@ impl MqttBridge {
                 changed = status_rx.changed() => {
                     if changed.is_err() {
                         break;
+                    }
+                    if !connected {
+                        continue;
                     }
                     let status = status_rx.borrow_and_update().clone();
                     let publish_fps = last_fps_publish.elapsed() >= FPS_INTERVAL
