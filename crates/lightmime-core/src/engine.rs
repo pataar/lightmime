@@ -179,6 +179,12 @@ impl Actor {
                     Some(Command::StreamFailed(reason)) => self.fail(reason).await,
                     None => break,
                 },
+                Ok(()) = self.settings.changed() => {
+                    let fps = self.settings.borrow_and_update().fps;
+                    if let Some(session) = &self.session {
+                        session.capture.set_max_fps(fps);
+                    }
+                }
                 _ = health.tick() => {
                     let error = self.session.as_ref().and_then(|s| s.capture.poll_error());
                     if let Some(error) = error {
@@ -232,8 +238,9 @@ impl Actor {
             .and_then(|p| std::fs::read_to_string(p).ok())
             .map(|t| t.trim().to_owned())
             .filter(|t| !t.is_empty());
+        let fps = self.settings.borrow_and_update().fps;
         let (capture, new_token) =
-            ScreenCapture::start(&self.config.capture, token.as_deref()).await?;
+            ScreenCapture::start(&self.config.capture, fps, token.as_deref()).await?;
         if let (Some(path), Some(token)) = (&self.restore_token_path, new_token) {
             if let Some(dir) = path.parent() {
                 let _ = std::fs::create_dir_all(dir);

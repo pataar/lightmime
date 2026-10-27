@@ -33,6 +33,7 @@ impl FrameSource {
 /// portal session.
 pub struct ScreenCapture {
     pipeline: gst::Pipeline,
+    rate: gst::Element,
     latest: Arc<Mutex<Option<Frame>>>,
     session: Session<Screencast>,
     // Keeps the PipeWire connection open for the lifetime of the pipeline.
@@ -44,9 +45,10 @@ impl ScreenCapture {
     ///
     /// With a `restore_token` from an earlier run the portal reuses that
     /// choice without asking. Returns the capture plus the token to store for
-    /// next time.
+    /// next time. Frames above `max_fps` are dropped; see [`Self::set_max_fps`].
     pub async fn start(
         config: &CaptureConfig,
+        max_fps: u32,
         restore_token: Option<&str>,
     ) -> Result<(Self, Option<String>)> {
         gst::init().context("initialising GStreamer")?;
@@ -93,7 +95,11 @@ impl ScreenCapture {
             .context("opening the PipeWire remote")?;
 
         let latest = Arc::new(Mutex::new(None));
-        let pipeline = build_pipeline(fd.as_raw_fd(), node_id, config, latest.clone())?;
+        let source = format!(
+            "pipewiresrc fd={} path={node_id} do-timestamp=true keepalive-time=1000",
+            fd.as_raw_fd()
+        );
+        let (pipeline, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
         pipeline
             .set_state(gst::State::Playing)
             .context("starting the capture pipeline")?;
@@ -102,6 +108,7 @@ impl ScreenCapture {
         Ok((
             Self {
                 pipeline,
+                rate,
                 latest,
                 session,
                 _pipewire_fd: fd,
@@ -113,6 +120,13 @@ impl ScreenCapture {
     /// A handle for reading frames from another thread.
     pub fn frame_source(&self) -> FrameSource {
         FrameSource(self.latest.clone())
+    }
+
+    /// Change how many frames per second are converted, to follow the sync
+    /// rate; frames the stream loop would skip are not worth processing.
+    pub fn set_max_fps(&self, fps: u32) {
+        self.rate
+            .set_property("max-rate", fps.clamp(1, MAX_FPS) as i32);
     }
 
     /// Report a pipeline error, if one happened since the last call.
@@ -139,22 +153,29 @@ impl Drop for ScreenCapture {
 }
 
 fn build_pipeline(
-    fd: i32,
-    node_id: u32,
+    source: &str,
     config: &CaptureConfig,
+    max_fps: u32,
     latest: Arc<Mutex<Option<Frame>>>,
-) -> Result<gst::Pipeline> {
-    // Drop frames above the highest sync rate before any per-pixel work, and
+) -> Result<(gst::Pipeline, gst::Element)> {
+    // `max-framerate` asks the compositor not to render and copy frames
+    // faster than MAX_FPS on high-refresh screens. It is a list, not a range:
+    // pipewiresrc makes the first value the default, and for a range that is
+    // the minimum. Lower entries keep negotiation working on slower screens.
+    //
+    // Then drop frames above the sync rate before any per-pixel work, and
     // scale down before converting, so conversion runs on a few thousand
-    // pixels instead of the full screen at the compositor's refresh rate.
+    // pixels. Buffers are not copied out of PipeWire (`always-copy`): the
+    // pipeline releases them as soon as they are scaled.
     let description = format!(
-        "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 always-copy=true \
-         ! videorate drop-only=true max-rate={max_fps} \
+        "{source} \
+         ! capsfilter caps=\"video/x-raw,max-framerate=(fraction){{ {MAX_FPS}/1, 50/1, 30/1, 25/1, 24/1 }}\" \
+         ! videorate name=rate drop-only=true max-rate={max_fps} \
          ! videoscale add-borders=false \
          ! video/x-raw,width={w},height={h},pixel-aspect-ratio=1/1 \
          ! videoconvert ! video/x-raw,format=RGB \
          ! appsink name=sink max-buffers=1 drop=true sync=false",
-        max_fps = MAX_FPS,
+        max_fps = max_fps.clamp(1, MAX_FPS),
         w = config.width,
         h = config.height,
     );
@@ -166,6 +187,9 @@ fn build_pipeline(
         .by_name("sink")
         .and_then(|e| e.downcast::<gst_app::AppSink>().ok())
         .ok_or_else(|| anyhow!("capture pipeline has no appsink"))?;
+    let rate = pipeline
+        .by_name("rate")
+        .ok_or_else(|| anyhow!("capture pipeline has no videorate"))?;
 
     sink.set_callbacks(
         gst_app::AppSinkCallbacks::builder()
@@ -180,7 +204,7 @@ fn build_pipeline(
             })
             .build(),
     );
-    Ok(pipeline)
+    Ok((pipeline, rate))
 }
 
 /// Copy a sample into a tightly packed RGB frame (GStreamer may pad rows).
