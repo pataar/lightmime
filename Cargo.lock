@@ -3432,7 +3432,7 @@ dependencies = [
 
 [[package]]
 name = "lightmime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -3452,7 +3452,7 @@ dependencies = [
 
 [[package]]
 name = "lightmime-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ashpd",
@@ -3472,7 +3472,7 @@ dependencies = [
 
 [[package]]
 name = "lightmime-gui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "ashpd",

@@ -21,8 +21,8 @@ anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 dirs = "7.0.0"
 hostname = "0.4.2"
-lightmime-core = { version = "0.1.0", path = "../lightmime-core" }
-lightmime-gui = { version = "0.1.0", path = "../lightmime-gui", optional = true }
+lightmime-core = { version = "0.1.1", path = "../lightmime-core" }
+lightmime-gui = { version = "0.1.1", path = "../lightmime-gui", optional = true }
 openssl = "0.10.81"
 # OpenSSL is linked for the DTLS stream anyway; rustls would add a second TLS stack.
 rumqttc = { version = "0.25.1", default-features = false, features = ["use-native-tls"] }
