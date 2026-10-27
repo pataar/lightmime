@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>lightmime</title>
+  <defs>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF7A3D"/>
+      <stop offset="0.35" stop-color="#F0479B"/>
+      <stop offset="0.68" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#22C7E8"/>
+    </linearGradient>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1C1D33"/>
+      <stop offset="1" stop-color="#0C0D18"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <clipPath id="tile">
+      <rect x="8" y="8" width="240" height="240" rx="56"/>
+    </clipPath>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#night)"/>
+  <g clip-path="url(#tile)">
+    <!-- the light the screen casts on the wall behind it -->
+    <rect x="36" y="62" width="184" height="124" rx="30" fill="url(#spectrum)" opacity="0.85" filter="url(#glow)"/>
+  </g>
+  <rect x="56" y="78" width="144" height="92" rx="14" fill="#0C0D18"/>
+  <rect x="62" y="84" width="132" height="80" rx="9" fill="url(#spectrum)"/>
+  <rect x="62" y="84" width="132" height="80" rx="9" fill="url(#sheen)"/>
+</svg>
