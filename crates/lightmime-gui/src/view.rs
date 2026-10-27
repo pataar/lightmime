@@ -16,6 +16,7 @@ use lightmime_core::{BridgeConfig, EngineState, Status, SyncSettings};
 
 use crate::Shared;
 use crate::autostart;
+use crate::decorations::{self, Drag};
 use crate::theme::{Theme, UiFont};
 use crate::widgets::{ButtonKind, TextInput, button, slider, switch};
 
@@ -85,6 +86,7 @@ pub struct MainView {
     notice: Option<String>,
     slider_bounds: [Rc<Cell<Bounds<Pixels>>>; 3],
     save_settings: Option<Task<()>>,
+    drag: Drag,
     _watchers: Vec<Task<()>>,
 }
 
@@ -112,6 +114,7 @@ impl MainView {
             areas: Areas::Unloaded,
             autostart: autostart::current(),
             notice: None,
+            drag: Drag::default(),
             slider_bounds: Default::default(),
             save_settings: None,
             _watchers: vec![status_watcher, settings_watcher],
@@ -598,9 +601,8 @@ impl Render for MainView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::of(window, cx);
         let paired = self.bridge.is_paired();
-        div()
+        let content = div()
             .id("main")
-            .font_family(cx.global::<UiFont>().0.clone())
             .size_full()
             .overflow_y_scroll()
             .bg(theme.bg)
@@ -627,6 +629,18 @@ impl Render for MainView {
             .when(paired, |this| this.child(self.render_areas(theme, cx)))
             .child(self.render_sliders(theme, cx))
             .child(self.render_general(theme, cx))
+            .into_any_element();
+        div()
+            .size_full()
+            .font_family(cx.global::<UiFont>().0.clone())
+            .text_color(theme.text)
+            .child(decorations::frame(
+                window,
+                theme,
+                "lightmime",
+                &self.drag,
+                content,
+            ))
     }
 }
 

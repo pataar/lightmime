@@ -5,6 +5,7 @@
 //! about the config file or MQTT.
 
 mod autostart;
+mod decorations;
 mod icons;
 mod theme;
 mod tray;

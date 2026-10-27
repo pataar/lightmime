@@ -32,6 +32,7 @@ crates/lightmime-gui/      window + tray; library called by `lightmime gui`, no 
   src/lib.rs               run(Options), Store trait (persistence is the binary's job), app-level window/tray wiring
   src/view.rs              MainView: status, pairing, areas, sliders, start (and sync) at login
   src/widgets.rs           button, TextInput (minimal), slider, switch; gpui has none built in
+  src/decorations.rs       titlebar, border and resize margin when the compositor wants client-side decorations (GNOME)
   src/theme.rs             brand palette light/dark, UiFont (picks an installed font), ForceAppearance
   src/tray.rs              ksni StatusNotifierItem; Show/Quit go to gpui over a channel, start/stop to the Engine
   src/autostart.rs         Background portal in Flatpak, ~/.config/autostart file otherwise
@@ -83,6 +84,10 @@ packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bu
   gpui tasks directly.
 - `ashpd` must use the `async-io` feature everywhere: gpui enables it, and
   ashpd refuses to build with both `async-io` and `tokio`.
+- On GNOME Wayland Mutter offers no server-side decorations and gpui draws
+  none, so `decorations::frame` draws the titlebar itself. It is a no-op when
+  the window manager decorates (Plasma, X11); the headless screenshots always
+  take that path, so they do not show the GNOME titlebar.
 - Closing the window keeps the app in the tray; without a tray (no
   StatusNotifierWatcher) it quits. SIGINT/SIGTERM quit like the tray's Quit,
   so the area is always released.
