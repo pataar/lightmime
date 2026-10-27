@@ -15,7 +15,9 @@ use lightmime_core::{BridgeConfig, Config, Engine, EngineState};
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
-    let host = args.next().context("usage: minimal <bridge-ip> [app-key client-key]")?;
+    let host = args
+        .next()
+        .context("usage: minimal <bridge-ip> [app-key client-key]")?;
     let (app_key, client_key) = match (args.next(), args.next()) {
         (Some(app_key), Some(client_key)) => (app_key, client_key),
         _ => {
@@ -29,7 +31,9 @@ async fn main() -> Result<()> {
     let areas = Bridge::new(&host, &app_key)?
         .entertainment_configurations()
         .await?;
-    let area = areas.first().context("no entertainment areas on this bridge")?;
+    let area = areas
+        .first()
+        .context("no entertainment areas on this bridge")?;
     println!("Streaming to {:?}", area.metadata.name);
 
     let config = Config {
