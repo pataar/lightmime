@@ -29,6 +29,9 @@ latency.
 - **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/background.html).
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders. See [Home Assistant](https://lightmime.pataar.nl/home-assistant.html).
+- **Light on resources**: one Rust binary that scales each frame down to 64×36 pixels before touching it. While syncing
+  at 30 fps it uses about 1.5 % of one CPU core and 36 MB of memory
+  ([measurement](https://lightmime.pataar.nl/comparison.html#resource-use)).
 
 ## Install
 
@@ -79,6 +82,22 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
    2100, one datagram per frame.
 
 More in [How it works](https://lightmime.pataar.nl/how-it-works.html).
+
+## Compared with Lumux and HyperHDR
+
+| | lightmime | [Lumux](https://github.com/enginkirmaci/lumux) | [HyperHDR](https://github.com/awawa-dev/HyperHDR) |
+|---|---|---|---|
+| Written in | Rust | Python (GTK4 / libadwaita) | C++ |
+| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, LED strips over serial/SPI, and more |
+| Screen capture on Wayland | Portal + PipeWire | Portal | Portal + PipeWire, also USB HDMI grabbers |
+| Interface | Window, tray, CLI | Window, tray | Web interface |
+| Runs headless | Yes, also as a systemd user service | No | Yes, but PipeWire capture needs it to run as a user app, not a system service |
+| Home Assistant | MQTT discovery | No | MQTT |
+| Platforms | Linux | Linux | Linux, Windows, macOS |
+
+Pick HyperHDR if you drive LED strips, use an HDMI grabber or want HDR tone mapping; it does much more. lightmime does
+one thing, Hue sync from a Linux desktop, with as little setup and overhead as possible. More in
+[Compared with other tools](https://lightmime.pataar.nl/comparison.html).
 
 ## Contributing
 

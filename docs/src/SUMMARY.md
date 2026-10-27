@@ -13,3 +13,4 @@
 - [CLI reference](cli.md)
 - [Troubleshooting](troubleshooting.md)
 - [How it works](how-it-works.md)
+- [Compared with other tools](comparison.md)
