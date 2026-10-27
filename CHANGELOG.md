@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/pataar/lightmime/compare/v0.1.0...v0.1.1) - 2026-10-27
+
+### Added
+
+- *(gui)* draw a titlebar when the compositor wants client-side decorations
+- *(gui)* option to start syncing at login
+
+### Fixed
+
+- *(config)* keep comments and unknown keys when saving
+- *(mqtt)* use OpenSSL for MQTT TLS instead of rustls
+
+### Other
+
+- share pairing retry, slider limits and state helpers
+- *(core)* drop unused deps and the second TLS stack
+
 ### Added
 
 - Screen capture through the ScreenCast portal and PipeWire, mapped onto the lights of a Hue entertainment area and

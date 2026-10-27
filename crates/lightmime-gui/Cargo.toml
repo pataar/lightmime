@@ -20,7 +20,7 @@ gpui = { package = "gpui-pre", version = "0.3.10" }
 # Wayland is the main target; X11 comes for free.
 gpui_platform = { package = "gpui-pre-platform", version = "0.3.10", default-features = false, features = ["wayland", "x11"] }
 ksni = "0.3.7"
-lightmime-core = { version = "0.1.0", path = "../lightmime-core" }
+lightmime-core = { version = "0.1.1", path = "../lightmime-core" }
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "sync", "time"] }
 tracing = "0.1.44"
 
