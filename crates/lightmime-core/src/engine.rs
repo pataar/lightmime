@@ -2,8 +2,8 @@
 //! streaming loop. Frontends talk to it through an [`Engine`] handle.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -12,7 +12,7 @@ use tokio::sync::{mpsc, watch};
 
 use crate::capture::ScreenCapture;
 use crate::color::{ColorMapper, Zone};
-use crate::config::{Config, SyncSettings};
+use crate::config::{BridgeConfig, Config, SyncSettings};
 use crate::hue::{Bridge, ChannelColor, EntertainmentStream};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,6 +58,7 @@ impl Default for Status {
 enum Command {
     Start,
     Stop,
+    SetBridge(BridgeConfig),
     StreamFailed(String),
 }
 
@@ -67,7 +68,7 @@ enum Command {
 pub struct Engine {
     commands: mpsc::UnboundedSender<Command>,
     status: watch::Receiver<Status>,
-    settings: Arc<RwLock<SyncSettings>>,
+    settings: Arc<watch::Sender<SyncSettings>>,
 }
 
 impl Engine {
@@ -77,11 +78,11 @@ impl Engine {
     pub fn spawn(config: Config, restore_token_path: Option<PathBuf>) -> Self {
         let (commands, command_rx) = mpsc::unbounded_channel();
         let (status_tx, status) = watch::channel(Status::default());
-        let settings = Arc::new(RwLock::new(config.sync.clone().sanitized()));
+        let settings = Arc::new(watch::Sender::new(config.sync.clone().sanitized()));
         let actor = Actor {
             config,
             restore_token_path,
-            settings: settings.clone(),
+            settings: settings.subscribe(),
             status: Arc::new(status_tx),
             commands: commands.clone(),
             session: None,
@@ -111,24 +112,38 @@ impl Engine {
         self.status.clone()
     }
 
+    /// Use another bridge or entertainment area, for example after pairing
+    /// from a frontend. A running session restarts with it.
+    pub fn set_bridge(&self, bridge: BridgeConfig) {
+        let _ = self.commands.send(Command::SetBridge(bridge));
+    }
+
     pub fn settings(&self) -> SyncSettings {
-        self.settings.read().map(|s| s.clone()).unwrap_or_default()
+        self.settings.borrow().clone()
+    }
+
+    /// Watch settings changes, including those made by another frontend.
+    pub fn subscribe_settings(&self) -> watch::Receiver<SyncSettings> {
+        self.settings.subscribe()
     }
 
     /// Change settings; takes effect on the next frame.
     pub fn update_settings(&self, update: impl FnOnce(&mut SyncSettings)) {
-        if let Ok(mut settings) = self.settings.write() {
+        self.settings.send_if_modified(|settings| {
             let mut next = settings.clone();
             update(&mut next);
-            *settings = next.sanitized();
-        }
+            let next = next.sanitized();
+            let changed = next != *settings;
+            *settings = next;
+            changed
+        });
     }
 }
 
 struct Actor {
     config: Config,
     restore_token_path: Option<PathBuf>,
-    settings: Arc<RwLock<SyncSettings>>,
+    settings: watch::Receiver<SyncSettings>,
     status: Arc<watch::Sender<Status>>,
     commands: mpsc::UnboundedSender<Command>,
     session: Option<Session>,
@@ -152,6 +167,14 @@ impl Actor {
                     Some(Command::Stop) => {
                         self.stop_session().await;
                         self.set_state(EngineState::Idle);
+                    }
+                    Some(Command::SetBridge(bridge)) => {
+                        let restart = self.session.is_some();
+                        self.config.bridge = bridge;
+                        if restart {
+                            self.stop_session().await;
+                            self.start().await;
+                        }
                     }
                     Some(Command::StreamFailed(reason)) => self.fail(reason).await,
                     None => break,
@@ -296,7 +319,7 @@ struct StreamWorker {
     area_id: String,
     frames: crate::capture::FrameSource,
     mapper: ColorMapper,
-    settings: Arc<RwLock<SyncSettings>>,
+    settings: watch::Receiver<SyncSettings>,
     status: Arc<watch::Sender<Status>>,
     stop: Arc<AtomicBool>,
 }
@@ -327,7 +350,7 @@ impl StreamWorker {
 
         while !self.stop.load(Ordering::Relaxed) {
             let tick = Instant::now();
-            let settings = self.settings.read().map(|s| s.clone()).unwrap_or_default();
+            let settings = self.settings.borrow().clone();
             let colors = match self.frames.latest() {
                 Some(frame) => self.mapper.map(&frame, &settings),
                 // Keep the session alive until the first frame arrives.

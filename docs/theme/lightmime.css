@@ -1,0 +1,115 @@
+/* The brand palette (assets/brand/README.md): a Night sidebar, Paper panes for light and Night panes for dark, Violet
+   for links and the active page. Every built-in theme maps to one of the two. */
+
+.ayu, .coal, .navy {
+    --bg: #0c0d18;
+    --fg: #f4f2ff;
+    --sidebar-bg: #08090f;
+    --sidebar-fg: #f4f2ff;
+    --sidebar-non-existant: #8c8daa;
+    --sidebar-active: #a993ff;
+    --sidebar-spacer: #24253f;
+    --sidebar-header-border-color: #7c5cff;
+    --scrollbar: #2c2d4a;
+    --icons: #a3a4c4;
+    --icons-hover: #c9bdff;
+    --links: #b3a2ff;
+    --inline-code-color: #ff9a6b;
+    --theme-popup-bg: #1c1d33;
+    --theme-popup-border: #2c2d4a;
+    --theme-hover: #24253f;
+    --quote-bg: #14152a;
+    --quote-border: #2c2d4a;
+    --warning-border: #ff7a3d;
+    --table-border-color: #2c2d4a;
+    --table-header-bg: #1c1d33;
+    --table-alternate-bg: #11121f;
+    --searchbar-border-color: #2c2d4a;
+    --searchbar-bg: #14152a;
+    --searchbar-fg: #f4f2ff;
+    --searchbar-shadow-color: #050509;
+    --searchresults-header-fg: #a3a4c4;
+    --searchresults-border-color: #2c2d4a;
+    --searchresults-li-bg: #1c1d33;
+    --search-mark-bg: #7c5cff;
+    --footnote-highlight: #7c5cff;
+    --overlay-bg: rgba(5, 5, 9, 0.6);
+    --blockquote-note-color: #b3a2ff;
+    --blockquote-tip-color: #22c7e8;
+    --blockquote-important-color: #f0479b;
+    --blockquote-warning-color: #ff7a3d;
+    --blockquote-caution-color: #ff6b81;
+}
+
+.light, .rust, html:not(.js) {
+    --bg: #fbfaff;
+    --fg: #14152a;
+    --sidebar-bg: #0c0d18;
+    --sidebar-fg: #f4f2ff;
+    --sidebar-non-existant: #8c8daa;
+    --sidebar-active: #a993ff;
+    --sidebar-spacer: #24253f;
+    --sidebar-header-border-color: #7c5cff;
+    --scrollbar: #dedbf2;
+    --icons: #5d5f7d;
+    --icons-hover: #5b3ee0;
+    --links: #5b3ee0;
+    --inline-code-color: #b2401a;
+    --theme-popup-bg: #f4f2ff;
+    --theme-popup-border: #dedbf2;
+    --theme-hover: #ebe8fb;
+    --quote-bg: #f4f2ff;
+    --quote-border: #dedbf2;
+    --warning-border: #c45a12;
+    --table-border-color: #dedbf2;
+    --table-header-bg: #ebe8fb;
+    --table-alternate-bg: #f6f5ff;
+    --searchbar-border-color: #dedbf2;
+    --searchbar-bg: #ffffff;
+    --searchbar-fg: #14152a;
+    --searchbar-shadow-color: #dedbf2;
+    --searchresults-header-fg: #5d5f7d;
+    --searchresults-border-color: #dedbf2;
+    --searchresults-li-bg: #ebe8fb;
+    --search-mark-bg: #d6ccff;
+    --footnote-highlight: #d6ccff;
+    --overlay-bg: rgba(20, 21, 42, 0.3);
+    --blockquote-note-color: #5b3ee0;
+    --blockquote-tip-color: #0b7f99;
+    --blockquote-important-color: #b8256f;
+    --blockquote-warning-color: #b04a0c;
+    --blockquote-caution-color: #b3203a;
+}
+
+.ayu .hljs, .coal .hljs, .navy .hljs { background: #14152a; }
+.light .hljs, .rust .hljs, html:not(.js) .hljs { background: #f4f2ff; }
+
+h1, h2, h3, h4 {
+    letter-spacing: -0.01em;
+}
+
+/* Screenshots come in a light and a dark variant, marked the way GitHub switches them; here the theme picks one. */
+img[src$="#gh-dark-mode-only"],
+.ayu img[src$="#gh-light-mode-only"], .coal img[src$="#gh-light-mode-only"], .navy img[src$="#gh-light-mode-only"] {
+    display: none;
+}
+.ayu img[src$="#gh-dark-mode-only"], .coal img[src$="#gh-dark-mode-only"], .navy img[src$="#gh-dark-mode-only"] {
+    display: inline;
+}
+
+/* The logo replaces the title text in the top bar; font-size 0 keeps "lightmime" for screen readers. */
+.menu-title {
+    background: url("../logo.svg") center / contain no-repeat;
+    font-size: 0;
+    height: 30px;
+}
+.ayu .menu-title, .coal .menu-title, .navy .menu-title {
+    background-image: url("../logo-dark.svg");
+}
+
+.screenshot {
+    max-width: 440px;
+    width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(12, 13, 24, 0.18);
+}

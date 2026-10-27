@@ -1,9 +1,8 @@
 //! Core of lightmime: screen capture, colour extraction and Hue Entertainment
 //! streaming.
 //!
-//! The crate is frontend-agnostic. The `lightmime` daemon drives it from the
-//! command line and Home Assistant (MQTT); a GUI can embed [`Engine`] the same
-//! way.
+//! The crate is frontend-agnostic. The `lightmime` CLI, daemon and window (`lightmime-gui`)
+//! all drive it through [`Engine`].
 
 pub mod capture;
 pub mod color;

@@ -1,11 +1,16 @@
 [package]
 name = "lightmime-core"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Screen capture, colour mapping and Hue Entertainment streaming for lightmime"
+publish = false
 
 [dependencies]
 anyhow = "1.0.104"
-ashpd = { version = "0.13.13", features = ["screencast", "tokio"] }
+# async-io rather than tokio: gpui uses ashpd with async-io, and Cargo unifies the two into one build that refuses both.
+ashpd = { version = "0.13.13", default-features = false, features = ["screencast", "async-io"] }
 dirs = "7.0.0"
 gstreamer = "0.25.4"
 gstreamer-app = "0.25.2"

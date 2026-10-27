@@ -1,0 +1,14 @@
+[book]
+title = "lightmime"
+authors = ["pataar"]
+language = "en"
+src = "src"
+
+[output.html]
+additional-css = ["theme/lightmime.css"]
+default-theme = "light"
+preferred-dark-theme = "coal"
+git-repository-url = "https://github.com/pataar/lightmime"
+edit-url-template = "https://github.com/pataar/lightmime/edit/main/docs/{path}"
+site-url = "/"
+cname = "lightmime.pataar.nl"

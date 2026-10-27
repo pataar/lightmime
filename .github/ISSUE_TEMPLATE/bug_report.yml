@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [Troubleshooting](https://lightmime.pataar.nl/troubleshooting.html) first.
+        Do not paste bridge keys, MQTT passwords or your config file.
+        Security problems go through [private vulnerability reporting](https://github.com/pataar/lightmime/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log
+      description: Run lightmime from a terminal with `RUST_LOG=debug` and paste the output.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: lightmime version
+      description: Output of `lightmime --version`
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installed from
+      options: [Flatpak, Release binary, Source]
+    validations:
+      required: true
+  - type: input
+    id: desktop
+    attributes:
+      label: Distribution and desktop
+      placeholder: Fedora 43, GNOME 49 (Wayland)
+    validations:
+      required: true
+  - type: input
+    id: lights
+    attributes:
+      label: Bridge and lights
+      placeholder: Bridge v2, Play gradient lightstrip + 2 Play bars

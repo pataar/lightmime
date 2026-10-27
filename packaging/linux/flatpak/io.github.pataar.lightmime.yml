@@ -1,0 +1,39 @@
+# lightmime as a Flatpak, built by packaging/linux/flatpak.sh from a release binary, so nothing compiles twice. The
+# script stages the binary and the files below into `stage/` next to a copy of this manifest, with the release's
+# version in the metainfo. The binary needs glibc >= 2.39 and links GStreamer, OpenSSL and xkbcommon; the Freedesktop
+# runtime has them, along with the PipeWire GStreamer plugin, and the GPU driver comes from its GL extension.
+id: io.github.pataar.lightmime
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+sdk: org.freedesktop.Sdk
+command: lightmime-launch
+finish-args:
+  # The Hue bridge (HTTPS and DTLS on the LAN), bridge discovery and the optional MQTT broker.
+  - --share=network
+  # Display: Wayland, with X11 only where there is no Wayland.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  # The GPU for the window.
+  - --device=dri
+  # The tray icon (StatusNotifierItem). In a sandbox the tray registers under its unique bus name rather than owning
+  # org.kde.StatusNotifierItem-<pid>-<n>, so talking to the watcher is enough.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Read-only, to show whether the Background portal's login item exists. The portal writes it, not lightmime.
+  - --filesystem=xdg-config/autostart:ro
+  # Screen capture needs no permission here: the ScreenCast portal asks the user and hands over a PipeWire fd.
+modules:
+  - name: lightmime
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 lightmime /app/bin/lightmime
+      - install -Dm755 lightmime-launch /app/bin/lightmime-launch
+      - install -Dm644 io.github.pataar.lightmime.desktop /app/share/applications/io.github.pataar.lightmime.desktop
+      - install -Dm644 io.github.pataar.lightmime.metainfo.xml /app/share/metainfo/io.github.pataar.lightmime.metainfo.xml
+      - |
+        for icon in hicolor/*/apps/io.github.pataar.lightmime*; do
+          install -Dm644 "$icon" "/app/share/icons/$icon"
+        done
+    sources:
+      - type: dir
+        path: stage

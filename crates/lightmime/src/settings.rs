@@ -95,3 +95,28 @@ impl AppConfig {
         Ok(())
     }
 }
+
+/// Saves what the window changes into the config file, keeping the sections
+/// it does not know about.
+#[cfg(feature = "gui")]
+pub struct FileStore(pub PathBuf);
+
+#[cfg(feature = "gui")]
+impl FileStore {
+    fn modify(&self, change: impl FnOnce(&mut AppConfig)) -> Result<()> {
+        let mut config = AppConfig::load(&self.0)?;
+        change(&mut config);
+        config.save(&self.0)
+    }
+}
+
+#[cfg(feature = "gui")]
+impl lightmime_gui::Store for FileStore {
+    fn save_bridge(&self, bridge: &lightmime_core::BridgeConfig) -> Result<()> {
+        self.modify(|config| config.core.bridge = bridge.clone())
+    }
+
+    fn save_sync(&self, sync: &lightmime_core::SyncSettings) -> Result<()> {
+        self.modify(|config| config.core.sync = sync.clone())
+    }
+}

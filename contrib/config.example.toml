@@ -27,7 +27,8 @@ saturation = 1.2
 region_size = 0.3
 
 [mqtt]
-enabled = true
+# Home Assistant over MQTT; optional.
+enabled = false
 host = "homeassistant.local"
 port = 1883
 username = "lightmime"

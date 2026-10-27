@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.pataar.lightmime</id>
+  <name>lightmime</name>
+  <summary>Sync Philips Hue lights with your screen</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <developer id="io.github.pataar">
+    <name>Pieter Willekens</name>
+  </developer>
+  <description>
+    <p>
+      lightmime captures your screen and colours the lights of a Philips Hue entertainment area to match it, the way
+      Hue Sync does on other systems. It streams over the bridge's Entertainment API, so the lights follow the picture
+      with low latency.
+    </p>
+    <p>
+      A small window pairs with the bridge, picks the area and tunes brightness, smoothing and saturation; a tray icon
+      starts and stops syncing. Optionally, it shows up in Home Assistant over MQTT.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.pataar.lightmime.desktop</launchable>
+  <url type="homepage">https://lightmime.pataar.nl/</url>
+  <url type="bugtracker">https://github.com/pataar/lightmime/issues</url>
+  <url type="vcs-browser">https://github.com/pataar/lightmime</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Syncing to an entertainment area</caption>
+      <image>https://raw.githubusercontent.com/pataar/lightmime/main/docs/src/images/window-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The window in dark mode</caption>
+      <image>https://raw.githubusercontent.com/pataar/lightmime/main/docs/src/images/window-dark.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+  </supports>
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>hue</keyword>
+    <keyword>philips</keyword>
+    <keyword>ambilight</keyword>
+    <keyword>lights</keyword>
+  </keywords>
+</component>

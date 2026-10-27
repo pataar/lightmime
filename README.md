@@ -7,84 +7,60 @@
 
 # lightmime
 
-Sync Philips Hue lights with your screen on Linux, controlled from Home Assistant.
+<p>
+  <a href="https://lightmime.pataar.nl/"><img src="https://img.shields.io/badge/docs-lightmime.pataar.nl-7C5CFF" alt="Docs"></a>
+  <a href="https://github.com/pataar/lightmime/actions/workflows/ci.yml"><img src="https://github.com/pataar/lightmime/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/pataar/lightmime/releases/latest"><img src="https://img.shields.io/github/v/release/pataar/lightmime" alt="Release"></a>
+</p>
 
-lightmime captures the screen through the XDG ScreenCast portal (Wayland and
-X11, via PipeWire), turns it into one colour per light and streams those to a
-Hue Entertainment area over the bridge's DTLS streaming API, the same protocol
-Hue Sync uses. It runs as a small daemon that shows up in Home Assistant over
-MQTT discovery, so syncing can be started from a dashboard or an automation.
+Sync Philips Hue lights with your screen on Linux.
 
-## Layout
+lightmime watches what is on your screen and colours the lights of a Hue entertainment area to match it, the way Hue
+Sync does on other systems. It streams over the bridge's Entertainment API, so the lights follow the picture with low
+latency.
 
-| Crate | What it is |
-| --- | --- |
-| `crates/lightmime-core` | Library: capture, colour mapping, Hue REST + DTLS streaming, and the `Engine` that ties them together. No UI. |
-| `crates/lightmime` | The `lightmime` binary: CLI for pairing and testing, and the daemon with the Home Assistant MQTT bridge. |
+<img src="docs/src/images/window-light.png#gh-light-mode-only" width="360" alt="The lightmime window while syncing">
+<img src="docs/src/images/window-dark.png#gh-dark-mode-only" width="360" alt="The lightmime window while syncing">
 
-Logo, icons and colours are in [`assets/brand/`](assets/brand/README.md).
+- **A small window and a tray icon**: pair with the bridge, pick an area, start syncing and tune brightness, smoothing
+  and saturation while it runs. See [Window and tray](https://lightmime.pataar.nl/gui.html).
+- **Made for Wayland**: capture goes through the screen-cast portal and PipeWire, on KDE Plasma, GNOME and wlroots
+  compositors. You pick the screen once.
+- **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/background.html).
+- **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
+  and sliders. See [Home Assistant](https://lightmime.pataar.nl/home-assistant.html).
 
-A GUI can be added as another crate that embeds `lightmime_core::Engine` (start,
-stop, live settings and a status stream), exactly like the daemon does.
-
-## Requirements
-
-- A Hue bridge with an entertainment area set up in the Hue app
-- PipeWire and `xdg-desktop-portal` with a backend for your desktop (KDE, GNOME, wlroots, ...)
-- GStreamer 1.x with the PipeWire plugin (`gst-plugin-pipewire`) and base plugins
-- OpenSSL 3 (DTLS-PSK)
-
-Build: `cargo build --release`
-
-## Setup
+## Install
 
 ```sh
-# Pair with the bridge (press its link button when asked)…
-lightmime pair --host 192.168.1.20
-# …or reuse the credentials Lumux already has
-lightmime import-lumux
-
-lightmime areas              # list entertainment areas
-lightmime use-area "TV area" # pick one
-lightmime test               # 8-second colour sweep, no screen capture
-lightmime run --start        # capture and sync until Ctrl-C
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --user --if-not-exists lightmime https://lightmime.pataar.nl/flatpak/lightmime.flatpakrepo
+flatpak install --user lightmime io.github.pataar.lightmime
 ```
 
-The first sync asks which screen to share. The choice is remembered (portal
-restore token in `~/.local/state/lightmime/`), so later runs start silently.
+Release binaries and building from source are under [Install](https://lightmime.pataar.nl/install.html). Then follow
+the [Quickstart](https://lightmime.pataar.nl/quickstart.html): pair, choose an area, press Start.
 
-Config lives in `~/.config/lightmime/config.toml` (mode 0600, it holds
-credentials). See [`contrib/config.example.toml`](contrib/config.example.toml).
+You need a Hue bridge with an entertainment area set up in the Hue app, and a desktop with PipeWire and an
+`xdg-desktop-portal` backend that offers screen casting.
 
-## Home Assistant
-
-Enable the `[mqtt]` section and run the daemon (`lightmime run`, or the
-systemd user unit in [`contrib/`](contrib/lightmime.service)). Home Assistant
-discovers a device `lightmime (<hostname>)` with:
-
-| Entity | Purpose |
-| --- | --- |
-| `switch.…_sync` | Start / stop syncing |
-| `sensor.…_status` | `idle`, `starting`, `streaming` or `error`; attributes hold the area and the error message |
-| `sensor.…_frame_rate` | Frames per second sent to the bridge (diagnostic) |
-| `number.…_brightness`, `…_smoothing`, `…_saturation` | Live tuning; changes are saved to the config |
-
-The device goes unavailable when the daemon stops.
-
-## Systemd user service
+## From the command line
 
 ```sh
-install -Dm755 target/release/lightmime ~/.local/bin/lightmime
-install -Dm644 contrib/lightmime.service ~/.config/systemd/user/lightmime.service
-systemctl --user daemon-reload
-systemctl --user enable --now lightmime
+lightmime pair --host 192.168.1.20   # press the bridge's link button when asked
+lightmime areas                      # list entertainment areas
+lightmime use-area "TV area"         # pick one
+lightmime test                       # 8-second colour sweep, no screen capture
+lightmime run --start                # capture and sync until Ctrl-C
+lightmime gui                        # the window and tray icon
 ```
 
-The service runs inside your graphical session, which the screen-cast portal needs.
+See the [CLI reference](https://lightmime.pataar.nl/cli.html) and [Configuration](https://lightmime.pataar.nl/configuration.html).
 
 ## Desktop integration
 
-For the GUI's launcher entry, window icon and tray icon:
+The Flatpak brings its launcher entry and icons. For a binary or source install, add them for the launcher entry,
+window icon and tray icon:
 
 ```sh
 install -Dm644 contrib/io.github.pataar.lightmime.desktop ~/.local/share/applications/io.github.pataar.lightmime.desktop
@@ -102,7 +78,15 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port
    2100, one datagram per frame.
 
-## Development
+More in [How it works](https://lightmime.pataar.nl/how-it-works.html).
 
-See [AGENTS.md](AGENTS.md) for the architecture, protocol notes, the MQTT
-contract and the build/test commands.
+## Contributing
+
+Bug reports and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). [AGENTS.md](AGENTS.md) describes
+the architecture, protocol notes and the Home Assistant contract. Logo, icons and colours are in
+[`assets/brand/`](assets/brand/README.md).
+
+## Licence
+
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option. lightmime is not
+affiliated with Signify or Philips Hue.

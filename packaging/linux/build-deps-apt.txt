@@ -1,0 +1,10 @@
+pkg-config
+libgstreamer1.0-dev
+libgstreamer-plugins-base1.0-dev
+libssl-dev
+libxkbcommon-dev
+libxkbcommon-x11-dev
+libxcb1-dev
+libwayland-dev
+libfontconfig-dev
+libfreetype-dev

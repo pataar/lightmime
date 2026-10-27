@@ -4,6 +4,7 @@ pub mod api;
 pub mod stream;
 
 pub use api::{
-    Bridge, Channel, Credentials, EntertainmentConfiguration, PairError, Position, pair,
+    Bridge, Channel, Credentials, DiscoveredBridge, EntertainmentConfiguration, PairError,
+    Position, discover, pair,
 };
 pub use stream::{ChannelColor, EntertainmentStream};

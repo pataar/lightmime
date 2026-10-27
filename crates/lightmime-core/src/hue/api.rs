@@ -60,6 +60,33 @@ pub async fn pair(host: &str, device_type: &str) -> Result<Credentials, PairErro
     })
 }
 
+/// A bridge reported by Signify's discovery service.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DiscoveredBridge {
+    pub id: String,
+    #[serde(rename = "internalipaddress")]
+    pub host: String,
+}
+
+/// Ask Signify's discovery service (`discovery.meethue.com`) for the bridges
+/// that registered from this network's public address. The service is rate
+/// limited, so call it on request rather than in a loop.
+pub async fn discover() -> Result<Vec<DiscoveredBridge>> {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .context("building HTTP client")?
+        .get("https://discovery.meethue.com/")
+        .send()
+        .await
+        .context("contacting discovery.meethue.com")?
+        .error_for_status()
+        .context("discovery.meethue.com refused the request")?
+        .json()
+        .await
+        .context("reading the discovery response")
+}
+
 /// The bridge serves a certificate signed by Signify's own CA, so normal
 /// verification fails; traffic stays on the local network.
 fn http_client() -> Result<reqwest::Client> {

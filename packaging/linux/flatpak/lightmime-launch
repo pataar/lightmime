@@ -1,0 +1,7 @@
+#!/bin/sh
+# The Flatpak's command: `flatpak run io.github.pataar.lightmime` alone opens the window, as the launcher does;
+# with arguments it is the lightmime command.
+if [ $# -eq 0 ]; then
+    set -- gui
+fi
+exec /app/bin/lightmime "$@"

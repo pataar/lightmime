@@ -11,7 +11,7 @@ use lightmime_core::{Engine, EngineState};
 
 use crate::settings::AppConfig;
 
-/// Sync Philips Hue lights with your screen, controllable from Home Assistant.
+/// Sync Philips Hue lights with your screen.
 #[derive(Parser)]
 #[command(version)]
 struct Cli {
@@ -42,9 +42,20 @@ enum Command {
         #[arg(long, default_value_t = 8)]
         seconds: u64,
     },
-    /// Run the daemon (MQTT control for Home Assistant, if enabled).
+    /// Run headless: sync until stopped, controlled over MQTT (Home
+    /// Assistant) when that is enabled.
     Run {
         /// Start syncing immediately instead of waiting for a command.
+        #[arg(long)]
+        start: bool,
+    },
+    /// Open the window and tray icon. Runs the MQTT bridge too when enabled.
+    #[cfg(feature = "gui")]
+    Gui {
+        /// Start in the tray without opening the window.
+        #[arg(long)]
+        hidden: bool,
+        /// Start syncing immediately.
         #[arg(long)]
         start: bool,
     },
@@ -68,18 +79,27 @@ async fn main() -> Result<()> {
         Command::Areas => areas(&config).await,
         Command::UseArea { area } => use_area(&mut config, &config_path, &area).await,
         Command::Test { seconds } => test(&config, seconds).await,
-        Command::Run { start } => run(config, config_path, start).await,
+        Command::Run { start } => run(config, config_path, start, Frontend::Headless).await,
+        #[cfg(feature = "gui")]
+        Command::Gui { hidden, start } => {
+            run(config, config_path, start, Frontend::Gui { hidden }).await
+        }
     }
 }
 
-async fn pair(config: &mut AppConfig, path: &Path, host: String) -> Result<()> {
-    let device = format!(
+/// How this machine introduces itself to the bridge when pairing.
+fn device_name() -> String {
+    format!(
         "lightmime#{}",
         hostname::get()
             .ok()
             .and_then(|h| h.into_string().ok())
             .unwrap_or_default()
-    );
+    )
+}
+
+async fn pair(config: &mut AppConfig, path: &Path, host: String) -> Result<()> {
+    let device = device_name();
     println!("Press the link button on the Hue bridge (waiting 60 s)...");
     let deadline = Instant::now() + Duration::from_secs(60);
     let credentials = loop {
@@ -229,7 +249,20 @@ fn hue_to_rgb(h: f32) -> [u16; 3] {
     [r, g, b].map(|v: f32| (v * 65535.0) as u16)
 }
 
-async fn run(config: AppConfig, config_path: PathBuf, start: bool) -> Result<()> {
+enum Frontend {
+    /// Run until SIGINT or SIGTERM.
+    Headless,
+    /// Run until the window's tray menu (or the window, without a tray) quits.
+    #[cfg(feature = "gui")]
+    Gui { hidden: bool },
+}
+
+async fn run(
+    config: AppConfig,
+    config_path: PathBuf,
+    start: bool,
+    frontend: Frontend,
+) -> Result<()> {
     let engine = Engine::spawn(config.core.clone(), Some(settings::restore_token_path()));
 
     let mut status = engine.subscribe();
@@ -249,14 +282,15 @@ async fn run(config: AppConfig, config_path: PathBuf, start: bool) -> Result<()>
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let mqtt_task = if config.mqtt.enabled {
-        let bridge = mqtt::MqttBridge::new(config.mqtt.clone(), engine.clone(), config_path);
+        let bridge =
+            mqtt::MqttBridge::new(config.mqtt.clone(), engine.clone(), config_path.clone());
         Some(tokio::spawn(async move {
             if let Err(e) = bridge.run(shutdown_rx).await {
                 tracing::error!("MQTT bridge stopped: {e:#}");
             }
         }))
     } else {
-        if !start {
+        if !start && matches!(frontend, Frontend::Headless) {
             tracing::warn!(
                 "MQTT is disabled and --start was not given; nothing will start syncing"
             );
@@ -268,7 +302,23 @@ async fn run(config: AppConfig, config_path: PathBuf, start: bool) -> Result<()>
         engine.start();
     }
 
-    shutdown_signal().await;
+    match frontend {
+        Frontend::Headless => shutdown_signal().await,
+        #[cfg(feature = "gui")]
+        Frontend::Gui { hidden } => {
+            let options = lightmime_gui::Options {
+                engine: engine.clone(),
+                bridge: config.core.bridge.clone(),
+                store: std::sync::Arc::new(settings::FileStore(config_path)),
+                runtime: tokio::runtime::Handle::current(),
+                device_name: device_name(),
+                hidden,
+                quit_signal: Box::pin(shutdown_signal()),
+            };
+            // gpui owns this thread until the app quits.
+            tokio::task::block_in_place(|| lightmime_gui::run(options));
+        }
+    }
     tracing::info!("shutting down");
     engine.stop();
     // Give the engine time to stop the entertainment area on the bridge.

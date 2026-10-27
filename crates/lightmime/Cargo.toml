@@ -1,7 +1,15 @@
 [package]
 name = "lightmime"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Sync Philips Hue lights with your screen on Linux"
+
+[features]
+default = ["gui"]
+# The window and tray icon (`lightmime gui`). Without it the binary is the CLI and daemon only.
+gui = ["dep:lightmime-gui"]
 
 [dependencies]
 anyhow = "1.0.104"
@@ -9,6 +17,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 dirs = "7.0.0"
 hostname = "0.4.2"
 lightmime-core = { version = "0.1.0", path = "../lightmime-core" }
+lightmime-gui = { version = "0.1.0", path = "../lightmime-gui", optional = true }
 rumqttc = "0.25.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"

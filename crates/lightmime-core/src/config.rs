@@ -10,7 +10,7 @@ pub struct Config {
     pub sync: SyncSettings,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BridgeConfig {
     /// IP address or hostname of the Hue bridge.
@@ -57,7 +57,7 @@ impl Default for CaptureConfig {
 }
 
 /// Settings that can change while streaming.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SyncSettings {
     /// Frames per second sent to the bridge (the bridge handles ~25-50).
