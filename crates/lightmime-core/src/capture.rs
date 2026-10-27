@@ -15,7 +15,7 @@ use gstreamer_app as gst_app;
 use gstreamer_video as gst_video;
 
 use crate::color::Frame;
-use crate::config::{CaptureConfig, SourceKind};
+use crate::config::{CaptureConfig, MAX_FPS, SourceKind};
 
 /// Shared access to the most recent captured frame.
 #[derive(Clone)]
@@ -144,11 +144,17 @@ fn build_pipeline(
     config: &CaptureConfig,
     latest: Arc<Mutex<Option<Frame>>>,
 ) -> Result<gst::Pipeline> {
+    // Drop frames above the highest sync rate before any per-pixel work, and
+    // scale down before converting, so conversion runs on a few thousand
+    // pixels instead of the full screen at the compositor's refresh rate.
     let description = format!(
         "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 always-copy=true \
-         ! videoconvert ! videoscale add-borders=false \
-         ! video/x-raw,format=RGB,width={w},height={h},pixel-aspect-ratio=1/1 \
+         ! videorate drop-only=true max-rate={max_fps} \
+         ! videoscale add-borders=false \
+         ! video/x-raw,width={w},height={h},pixel-aspect-ratio=1/1 \
+         ! videoconvert ! video/x-raw,format=RGB \
          ! appsink name=sink max-buffers=1 drop=true sync=false",
+        max_fps = MAX_FPS,
         w = config.width,
         h = config.height,
     );

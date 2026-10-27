@@ -54,11 +54,16 @@ case $status in
         ;;
 esac
 
-tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
-# A release that flatpak.yml has not attached bundles to yet has none to download.
-assets=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-if grep -q '^lightmime-.*\.flatpak$' <<<"$assets"; then
-    gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern 'lightmime-*.flatpak' --dir "$bundles"
+# Before the first release there is nothing to import; any other failure stops the script.
+if ! tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>&1); then
+    [ "$tag" = "release not found" ] || { echo "$tag" >&2; exit 1; }
+    tag=
+fi
+if [ -n "$tag" ]; then
+    assets=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+    if grep -q '^lightmime-.*\.flatpak$' <<<"$assets"; then
+        gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern 'lightmime-*.flatpak' --dir "$bundles"
+    fi
 fi
 for bundle in "$bundles"/lightmime-*.flatpak; do
     [ -e "$bundle" ] || continue

@@ -56,6 +56,9 @@ impl Default for CaptureConfig {
     }
 }
 
+/// Upper bound for [`SyncSettings::fps`]; capture is capped at this rate too.
+pub const MAX_FPS: u32 = 60;
+
 /// Settings that can change while streaming.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -87,7 +90,7 @@ impl Default for SyncSettings {
 impl SyncSettings {
     /// Clamp every value to its valid range.
     pub fn sanitized(mut self) -> Self {
-        self.fps = self.fps.clamp(1, 60);
+        self.fps = self.fps.clamp(1, MAX_FPS);
         self.brightness = self.brightness.clamp(0.0, 1.0);
         self.smoothing = self.smoothing.clamp(0.0, 0.95);
         self.saturation = self.saturation.clamp(0.0, 3.0);

@@ -44,7 +44,8 @@ There is no bridge simulator. `lightmime test` checks pairing and streaming with
 ## Commit messages and pull request titles
 
 Use [Conventional Commits](https://www.conventionalcommits.org): `feat: …`, `fix: …`, `docs: …`, `chore: …`. Pull
-requests are squash-merged, so the title becomes the commit on `main`.
+requests are squash-merged, so the title becomes the commit on `main`, and release-plz uses it for the changelog and
+the version bump.
 
 ## Privacy
 

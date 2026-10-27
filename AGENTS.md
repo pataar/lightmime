@@ -141,11 +141,14 @@ runtime also `gst-plugin-pipewire` and an xdg-desktop-portal backend.
 
 ## Releasing
 
-Bump `version` in the root `Cargo.toml`, update CHANGELOG.md, commit, tag
-`vX.Y.Z` and push the tag. `release.yml` checks the tag matches, builds the
-tarballs and Flatpak bundles (x86_64, aarch64), creates the GitHub release and
-triggers `docs.yml`, which imports the bundles into the Flatpak repo on the
-site (signed when the `FLATPAK_GPG_PRIVATE_KEY` secret is set).
+release-plz (`release-plz.toml`, `.github/workflows/release-plz.yml`) keeps a
+release PR open that bumps the shared version and writes CHANGELOG.md from the
+Conventional Commit titles. Merging it makes release-plz push the `vX.Y.Z` tag
+(with `RELEASE_PLZ_TOKEN`, so the tag starts workflows). `release.yml` checks
+the tag matches, builds the tarballs and Flatpak bundles (x86_64, aarch64),
+creates the GitHub release and triggers `docs.yml`, which imports the bundles
+into the Flatpak repo on the site (signed when the `FLATPAK_GPG_PRIVATE_KEY`
+secret is set). Nothing is published to crates.io.
 
 ## Testing against real hardware
 

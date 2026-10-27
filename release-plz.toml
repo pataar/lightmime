@@ -1,0 +1,26 @@
+[workspace]
+# Not on crates.io: release-plz only bumps the version, writes the changelog and tags. The tag starts release.yml,
+# which builds the binaries and Flatpak bundles and creates the GitHub release.
+publish = false
+git_release_enable = false
+git_tag_name = "v{{ version }}"
+pr_labels = ["release"]
+
+# One version for all three crates, one changelog and one tag: the binary's.
+[[package]]
+name = "lightmime"
+changelog_path = "CHANGELOG.md"
+changelog_include = ["lightmime-core", "lightmime-gui"]
+version_group = "lightmime"
+
+[[package]]
+name = "lightmime-core"
+changelog_update = false
+git_tag_enable = false
+version_group = "lightmime"
+
+[[package]]
+name = "lightmime-gui"
+changelog_update = false
+git_tag_enable = false
+version_group = "lightmime"
