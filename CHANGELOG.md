@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/pataar/lightmime/compare/v0.1.0...v0.1.1) - 2026-10-27
+
+### Added
+
+- *(gui)* option to start syncing at login
+
+### Fixed
+
+- *(mqtt)* use OpenSSL for MQTT TLS instead of rustls
+
+### Other
+
+- share pairing retry, slider limits and state helpers
+
 ### Added
 
 - Screen capture through the ScreenCast portal and PipeWire, mapped onto the lights of a Hue entertainment area and
