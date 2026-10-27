@@ -16,6 +16,10 @@ use crate::settings::{AppConfig, MqttConfig};
 /// recorder.
 const FPS_INTERVAL: Duration = Duration::from_secs(10);
 
+/// Dragging a slider in Home Assistant sends a burst of values; write the
+/// config once it settles instead of for each one.
+const SAVE_DELAY: Duration = Duration::from_secs(1);
+
 /// A slider exposed to Home Assistant, shown as a percentage.
 struct Slider {
     key: &'static str,
@@ -117,6 +121,9 @@ impl MqttBridge {
 
         let mut status_rx = self.engine.subscribe();
         let mut last_fps_publish = Instant::now() - FPS_INTERVAL;
+        let mut save_pending = false;
+        let save_timer = tokio::time::sleep(Duration::ZERO);
+        tokio::pin!(save_timer);
         tracing::info!(
             "connecting to MQTT broker {}:{}{}",
             self.config.host,
@@ -133,7 +140,11 @@ impl MqttBridge {
                     }
                     Ok(Event::Incoming(Incoming::Publish(message))) => {
                         let payload = String::from_utf8_lossy(&message.payload).trim().to_owned();
-                        self.handle_command(&client, &message.topic, &payload).await?;
+                        let changed = self.handle_command(&client, &message.topic, &payload).await?;
+                        if changed && !save_pending {
+                            save_pending = true;
+                            save_timer.as_mut().reset(tokio::time::Instant::now() + SAVE_DELAY);
+                        }
                     }
                     Ok(_) => {}
                     Err(e) => {
@@ -141,7 +152,14 @@ impl MqttBridge {
                         tokio::time::sleep(Duration::from_secs(5)).await;
                     }
                 },
+                () = &mut save_timer, if save_pending => {
+                    save_pending = false;
+                    self.persist_settings();
+                }
                 () = async { let _ = shutdown.wait_for(|stop| *stop).await; } => {
+                    if save_pending {
+                        self.persist_settings();
+                    }
                     let status = self.engine.status();
                     self.publish_status(&client, &status, true).await?;
                     client
@@ -300,18 +318,25 @@ impl MqttBridge {
             .await
     }
 
-    async fn handle_command(&self, client: &AsyncClient, topic: &str, payload: &str) -> Result<()> {
+    /// Handle one incoming message; returns whether the settings changed and
+    /// need saving.
+    async fn handle_command(
+        &self,
+        client: &AsyncClient,
+        topic: &str,
+        payload: &str,
+    ) -> Result<bool> {
         if topic == format!("{}/status", self.config.discovery_prefix) {
             if payload == "online" {
                 self.announce(client).await?;
             }
-            return Ok(());
+            return Ok(false);
         }
         let Some(key) = topic
             .strip_prefix(&self.topic(""))
             .and_then(|rest| rest.strip_suffix("/set"))
         else {
-            return Ok(());
+            return Ok(false);
         };
 
         if key == "sync" {
@@ -320,19 +345,19 @@ impl MqttBridge {
                 "OFF" => self.engine.stop(),
                 other => tracing::warn!("ignoring sync command {other:?}"),
             }
-            return Ok(());
+            return Ok(false);
         }
         let Some(slider) = SLIDERS.iter().find(|s| s.key == key) else {
-            return Ok(());
+            return Ok(false);
         };
         let Ok(percent) = payload.parse::<f32>() else {
             tracing::warn!("ignoring non-numeric {key} value {payload:?}");
-            return Ok(());
+            return Ok(false);
         };
         self.engine
             .update_settings(|s| (slider.set)(s, percent / 100.0));
-        self.persist_settings();
-        self.publish_settings(client).await
+        self.publish_settings(client).await?;
+        Ok(true)
     }
 
     async fn publish_settings(&self, client: &AsyncClient) -> Result<()> {
