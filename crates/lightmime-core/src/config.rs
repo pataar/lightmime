@@ -90,11 +90,37 @@ impl Default for SyncSettings {
 impl SyncSettings {
     /// Clamp every value to its valid range.
     pub fn sanitized(mut self) -> Self {
+        // NaN passes through `clamp`, poisons the smoothed colours and
+        // survives a round trip through the config file, so reset it.
+        let defaults = Self::default();
+        let finite = |v: f32, default: f32| if v.is_finite() { v } else { default };
         self.fps = self.fps.clamp(1, MAX_FPS);
-        self.brightness = self.brightness.clamp(0.0, 1.0);
-        self.smoothing = self.smoothing.clamp(0.0, 0.95);
-        self.saturation = self.saturation.clamp(0.0, 3.0);
-        self.region_size = self.region_size.clamp(0.05, 1.0);
+        self.brightness = finite(self.brightness, defaults.brightness).clamp(0.0, 1.0);
+        self.smoothing = finite(self.smoothing, defaults.smoothing).clamp(0.0, 0.95);
+        self.saturation = finite(self.saturation, defaults.saturation).clamp(0.0, 3.0);
+        self.region_size = finite(self.region_size, defaults.region_size).clamp(0.05, 1.0);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitized_replaces_non_finite_values() {
+        let settings = SyncSettings {
+            brightness: f32::NAN,
+            smoothing: f32::NAN,
+            saturation: f32::INFINITY,
+            region_size: f32::NEG_INFINITY,
+            ..SyncSettings::default()
+        }
+        .sanitized();
+        let defaults = SyncSettings::default();
+        assert_eq!(settings.brightness, defaults.brightness);
+        assert_eq!(settings.smoothing, defaults.smoothing);
+        assert_eq!(settings.saturation, defaults.saturation);
+        assert_eq!(settings.region_size, defaults.region_size);
     }
 }
