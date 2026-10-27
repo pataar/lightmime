@@ -12,6 +12,8 @@ needed for the settings without a control, and for [MQTT](home-assistant.md).
 lightmime writes it readable by you only (mode 0600). A missing file or key means the default.
 
 Restart lightmime after editing the file by hand; the window and Home Assistant write their own changes into it.
+Those writes only touch the values that changed, so your comments, layout and any keys lightmime doesn't know
+about stay as they are.
 
 An annotated example is in
 [`contrib/config.example.toml`](https://github.com/pataar/lightmime/blob/main/contrib/config.example.toml).
