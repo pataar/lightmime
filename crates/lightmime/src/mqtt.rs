@@ -149,7 +149,17 @@ impl MqttBridge {
                     Ok(_) => {}
                     Err(e) => {
                         tracing::warn!("MQTT connection error: {e}; retrying in 5 s");
-                        tokio::time::sleep(Duration::from_secs(5)).await;
+                        // There is no connection to say goodbye on, so a
+                        // shutdown during the wait just ends the loop.
+                        tokio::select! {
+                            () = tokio::time::sleep(Duration::from_secs(5)) => {}
+                            _ = shutdown.wait_for(|stop| *stop) => {
+                                if save_pending {
+                                    self.persist_settings();
+                                }
+                                break;
+                            }
+                        }
                     }
                 },
                 () = &mut save_timer, if save_pending => {
