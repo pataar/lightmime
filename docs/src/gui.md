@@ -16,8 +16,8 @@ The window follows your desktop's light or dark style. From top to bottom:
   app.
 - **Tuning**: brightness, smoothing and saturation; see [Tuning](tuning.md). Changes apply to the next frame and are
   saved.
-- **Start at login**: starts lightmime in the tray (`lightmime gui --hidden`) when you log in. Syncing still waits
-  for you, or for Home Assistant. The Flatpak asks the desktop for this through the Background portal; a native install
+- **Start at login**: starts lightmime in the tray (`lightmime gui --hidden`) when you log in. Syncing waits for you,
+  or for Home Assistant, unless you also turn on **Start syncing at login** (adds `--start`). The Flatpak asks the desktop for this through the Background portal; a native install
   writes `~/.config/autostart/io.github.pataar.lightmime.desktop`.
 
 ## Tray

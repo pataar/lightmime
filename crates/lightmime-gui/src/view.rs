@@ -80,7 +80,7 @@ pub struct MainView {
     pairing: Pairing,
     discovered: Vec<DiscoveredBridge>,
     areas: Areas,
-    autostart: bool,
+    autostart: autostart::LoginItem,
     /// The last failed action, shown until the next one.
     notice: Option<String>,
     slider_bounds: [Rc<Cell<Bounds<Pixels>>>; 3],
@@ -110,7 +110,7 @@ impl MainView {
             pairing: Pairing::Idle,
             discovered: Vec::new(),
             areas: Areas::Unloaded,
-            autostart: autostart::is_enabled(),
+            autostart: autostart::current(),
             notice: None,
             slider_bounds: Default::default(),
             save_settings: None,
@@ -260,13 +260,12 @@ impl MainView {
         }));
     }
 
-    fn toggle_autostart(&mut self, cx: &mut Context<Self>) {
-        let enable = !self.autostart;
+    fn set_autostart(&mut self, item: autostart::LoginItem, cx: &mut Context<Self>) {
         self.run_job(
-            autostart::set(enable),
+            autostart::set(item),
             cx,
             move |this, result, _| match result {
-                Ok(()) => this.autostart = enable,
+                Ok(()) => this.autostart = item,
                 Err(e) => this.notice = Some(format!("Could not change the login item: {e:#}")),
             },
         );
@@ -532,32 +531,67 @@ impl MainView {
     }
 
     fn render_general(&self, theme: Theme, cx: &mut Context<Self>) -> impl IntoElement {
-        card(theme).child(
-            div()
-                .flex()
-                .items_center()
-                .gap_3()
-                .child(
-                    div()
-                        .flex_1()
-                        .flex()
-                        .flex_col()
-                        .child(div().text_sm().child("Start at login"))
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(theme.muted)
-                                .child("Opens in the tray; syncing waits for you."),
-                        ),
-                )
-                .child(switch(
-                    "autostart",
-                    self.autostart,
+        let item = self.autostart;
+        let mut card = card(theme).child(setting_row(
+            "Start at login",
+            "Opens in the tray when you log in.",
+            switch(
+                "autostart",
+                item.enabled,
+                theme,
+                cx.listener(move |this, _, _, cx| {
+                    let enabled = !item.enabled;
+                    let next = autostart::LoginItem {
+                        enabled,
+                        start_syncing: enabled && item.start_syncing,
+                    };
+                    this.set_autostart(next, cx)
+                }),
+            ),
+            theme,
+        ));
+        if item.enabled {
+            card = card.child(setting_row(
+                "Start syncing at login",
+                "Syncs to the chosen area right away instead of waiting for you.",
+                switch(
+                    "autostart-sync",
+                    item.start_syncing,
                     theme,
-                    cx.listener(|this, _, _, cx| this.toggle_autostart(cx)),
-                )),
-        )
+                    cx.listener(move |this, _, _, cx| {
+                        let next = autostart::LoginItem {
+                            start_syncing: !item.start_syncing,
+                            ..item
+                        };
+                        this.set_autostart(next, cx)
+                    }),
+                ),
+                theme,
+            ));
+        }
+        card
     }
+}
+
+fn setting_row(
+    label: &'static str,
+    hint: &'static str,
+    control: impl IntoElement,
+    theme: Theme,
+) -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .gap_3()
+        .child(
+            div()
+                .flex_1()
+                .flex()
+                .flex_col()
+                .child(div().text_sm().child(label))
+                .child(div().text_xs().text_color(theme.muted).child(hint)),
+        )
+        .child(control)
 }
 
 impl Render for MainView {

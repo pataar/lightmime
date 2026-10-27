@@ -30,7 +30,7 @@ crates/lightmime/          the `lightmime` binary
   src/mqtt.rs              Home Assistant MQTT discovery bridge
 crates/lightmime-gui/      window + tray; library called by `lightmime gui`, no config file or MQTT knowledge
   src/lib.rs               run(Options), Store trait (persistence is the binary's job), app-level window/tray wiring
-  src/view.rs              MainView: status, pairing, areas, sliders, start at login
+  src/view.rs              MainView: status, pairing, areas, sliders, start (and sync) at login
   src/widgets.rs           button, TextInput (minimal), slider, switch; gpui has none built in
   src/theme.rs             brand palette light/dark, UiFont (picks an installed font), ForceAppearance
   src/tray.rs              ksni StatusNotifierItem; Show/Quit go to gpui over a channel, start/stop to the Engine

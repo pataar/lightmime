@@ -13,7 +13,22 @@ use ashpd::desktop::background::Background;
 use crate::APP_ID;
 use crate::icons::APP_ICON_NAME;
 
-const ARGS: [&str; 2] = ["gui", "--hidden"];
+/// Whether lightmime starts at login, and whether it starts syncing then.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LoginItem {
+    pub enabled: bool,
+    pub start_syncing: bool,
+}
+
+impl LoginItem {
+    fn args(self) -> Vec<&'static str> {
+        let mut args = vec!["gui", "--hidden"];
+        if self.start_syncing {
+            args.push("--start");
+        }
+        args
+    }
+}
 
 fn entry_path() -> Option<PathBuf> {
     // Inside the sandbox XDG_CONFIG_HOME points into ~/.var/app, so go
@@ -26,14 +41,27 @@ fn entry_path() -> Option<PathBuf> {
     Some(config.join("autostart").join(format!("{APP_ID}.desktop")))
 }
 
-pub fn is_enabled() -> bool {
-    entry_path().is_some_and(|path| path.exists())
+/// Reads the current state back from the entry, which stays the source of
+/// truth so nothing else has to be kept in sync with it.
+pub fn current() -> LoginItem {
+    let Some(entry) = entry_path().and_then(|path| std::fs::read_to_string(path).ok()) else {
+        return LoginItem::default();
+    };
+    let start_syncing = entry
+        .lines()
+        .filter_map(|line| line.strip_prefix("Exec="))
+        .any(|exec| exec.split_whitespace().any(|arg| arg == "--start"));
+    LoginItem {
+        enabled: true,
+        start_syncing,
+    }
 }
 
-pub async fn set(enabled: bool) -> Result<()> {
+pub async fn set(item: LoginItem) -> Result<()> {
+    let enabled = item.enabled;
     if ashpd::is_sandboxed() {
         let mut command = vec!["lightmime"];
-        command.extend(ARGS);
+        command.extend(item.args());
         let response = Background::request()
             .reason("Start lightmime in the tray when you log in")
             .auto_start(enabled)
@@ -64,7 +92,7 @@ pub async fn set(enabled: bool) -> Result<()> {
         "[Desktop Entry]\nType=Application\nName=lightmime\nComment=Sync Hue lights with the screen\n\
          Exec=\"{}\" {}\nIcon={APP_ICON_NAME}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
         exe.display(),
-        ARGS.join(" ")
+        item.args().join(" ")
     );
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
