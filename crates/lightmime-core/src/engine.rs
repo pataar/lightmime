@@ -15,8 +15,9 @@ use crate::color::{ColorMapper, Zone};
 use crate::config::{BridgeConfig, Config, SyncSettings};
 use crate::hue::{Bridge, ChannelColor, EntertainmentStream};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum EngineState {
+    #[default]
     Idle,
     Starting,
     Streaming,
@@ -32,9 +33,21 @@ impl EngineState {
             Self::Error(_) => "error",
         }
     }
+
+    /// Starting or streaming: what frontends show as "sync on".
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Starting | Self::Streaming)
+    }
+
+    pub fn error(&self) -> Option<&str> {
+        match self {
+            Self::Error(message) => Some(message),
+            _ => None,
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Status {
     pub state: EngineState,
     /// Frames actually sent per second.
@@ -42,17 +55,6 @@ pub struct Status {
     /// Name of the entertainment area being streamed to.
     pub area: String,
     pub channels: usize,
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Self {
-            state: EngineState::Idle,
-            fps: 0.0,
-            area: String::new(),
-            channels: 0,
-        }
-    }
 }
 
 enum Command {
@@ -154,7 +156,7 @@ struct Session {
     area_id: String,
     capture: ScreenCapture,
     stop: Arc<AtomicBool>,
-    thread: Option<JoinHandle<()>>,
+    thread: JoinHandle<()>,
 }
 
 impl Actor {
@@ -289,23 +291,27 @@ impl Actor {
             area_id: area.id,
             capture,
             stop,
-            thread: Some(thread),
+            thread,
         })
     }
 
     async fn stop_session(&mut self) {
-        let Some(mut session) = self.session.take() else {
+        let Some(Session {
+            bridge,
+            area_id,
+            capture,
+            stop,
+            thread,
+        }) = self.session.take()
+        else {
             return;
         };
-        session.stop.store(true, Ordering::Relaxed);
-        if let Some(thread) = session.thread.take() {
-            let _ = tokio::task::spawn_blocking(move || thread.join()).await;
-        }
-        if let Err(e) = session.bridge.set_streaming(&session.area_id, false).await {
+        stop.store(true, Ordering::Relaxed);
+        let _ = tokio::task::spawn_blocking(move || thread.join()).await;
+        if let Err(e) = bridge.set_streaming(&area_id, false).await {
             tracing::warn!("could not stop the entertainment area: {e:#}");
         }
-        session.capture.stop().await;
-        self.status.send_modify(|s| s.fps = 0.0);
+        capture.stop().await;
     }
 
     fn set_state(&self, state: EngineState) {

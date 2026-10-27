@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand};
-use lightmime_core::hue::{self, Bridge, ChannelColor, EntertainmentStream, PairError};
+use lightmime_core::hue::{self, Bridge, ChannelColor, EntertainmentStream};
 use lightmime_core::{Engine, EngineState};
 
 use crate::settings::AppConfig;
@@ -100,20 +100,11 @@ fn device_name() -> String {
 
 async fn pair(config: &mut AppConfig, path: &Path, host: String) -> Result<()> {
     let device = device_name();
-    println!("Press the link button on the Hue bridge (waiting 60 s)...");
-    let deadline = Instant::now() + Duration::from_secs(60);
-    let credentials = loop {
-        match hue::pair(&host, &device).await {
-            Ok(credentials) => break credentials,
-            Err(PairError::LinkButtonNotPressed) if Instant::now() < deadline => {
-                tokio::time::sleep(Duration::from_secs(2)).await;
-            }
-            Err(PairError::LinkButtonNotPressed) => {
-                bail!("the link button was not pressed in time")
-            }
-            Err(PairError::Other(e)) => return Err(e),
-        }
-    };
+    println!(
+        "Press the link button on the Hue bridge (waiting {} s)...",
+        hue::PAIR_TIMEOUT.as_secs()
+    );
+    let credentials = hue::pair_waiting(&host, &device).await?;
     config.core.bridge.host = host;
     config.core.bridge.app_key = credentials.app_key;
     config.core.bridge.client_key = credentials.client_key;
@@ -325,7 +316,7 @@ async fn run(
     let mut status = engine.subscribe();
     let _ = tokio::time::timeout(
         Duration::from_secs(5),
-        status.wait_for(|s| !matches!(s.state, EngineState::Starting | EngineState::Streaming)),
+        status.wait_for(|s| !s.state.is_active()),
     )
     .await;
     let _ = shutdown_tx.send(true);

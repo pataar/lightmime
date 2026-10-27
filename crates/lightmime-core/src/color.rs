@@ -1,5 +1,7 @@
 //! Turning captured frames into per-channel colours.
 
+use std::sync::LazyLock;
+
 use crate::config::SyncSettings;
 use crate::hue::{Channel, ChannelColor};
 
@@ -107,13 +109,20 @@ fn saturate(rgb: [f32; 3], factor: f32) -> [f32; 3] {
     rgb.map(|c| (luma + (c - luma) * factor).clamp(0.0, 1.0))
 }
 
+/// Every sampled pixel goes through this each tick, so the `powf` is done
+/// once per possible value instead.
 fn srgb_to_linear(v: u8) -> f32 {
-    let v = v as f32 / 255.0;
-    if v <= 0.04045 {
-        v / 12.92
-    } else {
-        ((v + 0.055) / 1.055).powf(2.4)
-    }
+    static TABLE: LazyLock<[f32; 256]> = LazyLock::new(|| {
+        std::array::from_fn(|i| {
+            let v = i as f32 / 255.0;
+            if v <= 0.04045 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        })
+    });
+    TABLE[v as usize]
 }
 
 /// The bridge expects gamma-encoded values, like what the screen shows.

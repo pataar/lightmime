@@ -59,6 +59,11 @@ impl Default for CaptureConfig {
 /// Upper bound for [`SyncSettings::fps`]; capture is capped at this rate too.
 pub const MAX_FPS: u32 = 60;
 
+/// Upper bound for [`SyncSettings::smoothing`].
+pub const MAX_SMOOTHING: f32 = 0.95;
+/// Upper bound for [`SyncSettings::saturation`].
+pub const MAX_SATURATION: f32 = 3.0;
+
 /// Settings that can change while streaming.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -96,8 +101,8 @@ impl SyncSettings {
         let finite = |v: f32, default: f32| if v.is_finite() { v } else { default };
         self.fps = self.fps.clamp(1, MAX_FPS);
         self.brightness = finite(self.brightness, defaults.brightness).clamp(0.0, 1.0);
-        self.smoothing = finite(self.smoothing, defaults.smoothing).clamp(0.0, 0.95);
-        self.saturation = finite(self.saturation, defaults.saturation).clamp(0.0, 3.0);
+        self.smoothing = finite(self.smoothing, defaults.smoothing).clamp(0.0, MAX_SMOOTHING);
+        self.saturation = finite(self.saturation, defaults.saturation).clamp(0.0, MAX_SATURATION);
         self.region_size = finite(self.region_size, defaults.region_size).clamp(0.05, 1.0);
         self
     }

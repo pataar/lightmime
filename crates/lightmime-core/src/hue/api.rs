@@ -1,5 +1,7 @@
 //! Hue bridge REST API: pairing and entertainment configurations.
 
+use std::time::{Duration, Instant};
+
 use anyhow::{Context, Result, anyhow, bail};
 use serde::Deserialize;
 use serde_json::json;
@@ -18,6 +20,27 @@ pub enum PairError {
 pub struct Credentials {
     pub app_key: String,
     pub client_key: String,
+}
+
+/// How long [`pair_waiting`] keeps asking before giving up.
+pub const PAIR_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// [`pair`], retried until the link button is pressed or [`PAIR_TIMEOUT`]
+/// passes.
+pub async fn pair_waiting(host: &str, device_type: &str) -> Result<Credentials> {
+    let deadline = Instant::now() + PAIR_TIMEOUT;
+    loop {
+        match pair(host, device_type).await {
+            Ok(credentials) => return Ok(credentials),
+            Err(PairError::LinkButtonNotPressed) if Instant::now() < deadline => {
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+            Err(PairError::LinkButtonNotPressed) => {
+                bail!("the link button was not pressed within a minute")
+            }
+            Err(PairError::Other(e)) => return Err(e),
+        }
+    }
 }
 
 /// Register a new application on the bridge. Fails with

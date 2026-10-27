@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, ensure};
+use lightmime_core::config::{MAX_SATURATION, MAX_SMOOTHING};
 use lightmime_core::{Engine, EngineState, Status, SyncSettings};
 use openssl::x509::X509;
 use rumqttc::tokio_native_tls::native_tls;
@@ -29,6 +30,7 @@ struct Slider {
     key: &'static str,
     name: &'static str,
     icon: &'static str,
+    /// Upper bound of the setting itself; Home Assistant gets it in percent.
     max: f32,
     get: fn(&SyncSettings) -> f32,
     set: fn(&mut SyncSettings, f32),
@@ -39,7 +41,7 @@ const SLIDERS: &[Slider] = &[
         key: "brightness",
         name: "Brightness",
         icon: "mdi:brightness-6",
-        max: 100.0,
+        max: 1.0,
         get: |s| s.brightness,
         set: |s, v| s.brightness = v,
     },
@@ -47,7 +49,7 @@ const SLIDERS: &[Slider] = &[
         key: "smoothing",
         name: "Smoothing",
         icon: "mdi:blur",
-        max: 95.0,
+        max: MAX_SMOOTHING,
         get: |s| s.smoothing,
         set: |s, v| s.smoothing = v,
     },
@@ -55,7 +57,7 @@ const SLIDERS: &[Slider] = &[
         key: "saturation",
         name: "Saturation",
         icon: "mdi:palette",
-        max: 300.0,
+        max: MAX_SATURATION,
         get: |s| s.saturation,
         set: |s, v| s.saturation = v,
     },
@@ -282,7 +284,7 @@ impl MqttBridge {
                     "state_topic": self.topic(&format!("{}/state", slider.key)),
                     "command_topic": self.topic(&format!("{}/set", slider.key)),
                     "min": 0,
-                    "max": slider.max,
+                    "max": (slider.max * 100.0).round(),
                     "step": 1,
                     "unit_of_measurement": "%",
                     "mode": "slider",
@@ -394,13 +396,16 @@ impl MqttBridge {
         status: &Status,
         with_fps: bool,
     ) -> Result<()> {
-        let syncing = matches!(status.state, EngineState::Starting | EngineState::Streaming);
         client
             .publish(
                 self.topic("sync/state"),
                 QoS::AtLeastOnce,
                 true,
-                if syncing { "ON" } else { "OFF" },
+                if status.state.is_active() {
+                    "ON"
+                } else {
+                    "OFF"
+                },
             )
             .await?;
         client
@@ -411,12 +416,11 @@ impl MqttBridge {
                 status.state.label(),
             )
             .await?;
-        let error = match &status.state {
-            EngineState::Error(message) => Some(message.as_str()),
-            _ => None,
-        };
-        let attributes =
-            json!({ "area": status.area, "channels": status.channels, "error": error });
+        let attributes = json!({
+            "area": status.area,
+            "channels": status.channels,
+            "error": status.state.error(),
+        });
         client
             .publish(
                 self.topic("status/attributes"),

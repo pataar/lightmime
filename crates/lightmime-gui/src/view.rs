@@ -3,14 +3,15 @@
 
 use std::cell::Cell;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use gpui::{
     AnyElement, Bounds, Context, Entity, FontWeight, Pixels, SharedString, Task, Window, div,
     prelude::*, px,
 };
-use lightmime_core::hue::{self, Bridge, DiscoveredBridge, PairError};
+use lightmime_core::config::{MAX_SATURATION, MAX_SMOOTHING};
+use lightmime_core::hue::{self, Bridge, DiscoveredBridge};
 use lightmime_core::{BridgeConfig, EngineState, Status, SyncSettings};
 
 use crate::Shared;
@@ -18,8 +19,6 @@ use crate::autostart;
 use crate::theme::{Theme, UiFont};
 use crate::widgets::{ButtonKind, TextInput, button, slider, switch};
 
-/// How long to wait for the link button before giving up.
-const PAIR_TIMEOUT: Duration = Duration::from_secs(60);
 /// Slider changes are written to disk once dragging pauses this long.
 const SAVE_DELAY: Duration = Duration::from_millis(600);
 
@@ -45,7 +44,7 @@ const SLIDERS: [SliderSpec; 3] = [
         key: "smoothing",
         label: "Smoothing",
         hint: "Higher is calmer, lower follows the screen faster.",
-        max: 0.95,
+        max: MAX_SMOOTHING,
         get: |s| s.smoothing,
         set: |s, v| s.smoothing = v,
     },
@@ -53,7 +52,7 @@ const SLIDERS: [SliderSpec; 3] = [
         key: "saturation",
         label: "Saturation",
         hint: "100% keeps the screen's colours.",
-        max: 3.0,
+        max: MAX_SATURATION,
         get: |s| s.saturation,
         set: |s, v| s.saturation = v,
     },
@@ -98,35 +97,9 @@ impl MainView {
         cx.observe_window_appearance(window, |_, _, cx| cx.notify())
             .detach();
 
-        let mut status_rx = shared.engine.subscribe();
-        let status_watcher = cx.spawn(async move |this, cx| {
-            while status_rx.changed().await.is_ok() {
-                let status = status_rx.borrow_and_update().clone();
-                if this
-                    .update(cx, |this, cx| {
-                        this.status = status;
-                        cx.notify();
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        });
-        let mut settings_rx = shared.engine.subscribe_settings();
-        let settings_watcher = cx.spawn(async move |this, cx| {
-            while settings_rx.changed().await.is_ok() {
-                let settings = settings_rx.borrow_and_update().clone();
-                if this
-                    .update(cx, |this, cx| {
-                        this.settings = settings;
-                        cx.notify();
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-            }
+        let status_watcher = watch(shared.engine.subscribe(), cx, |this, s| this.status = s);
+        let settings_watcher = watch(shared.engine.subscribe_settings(), cx, |this, s| {
+            this.settings = s
         });
 
         let mut view = Self {
@@ -214,19 +187,8 @@ impl MainView {
         self.notice = None;
         let device = self.shared.device_name.clone();
         let job = async move {
-            let deadline = Instant::now() + PAIR_TIMEOUT;
-            loop {
-                match hue::pair(&host, &device).await {
-                    Ok(credentials) => return Ok((host, credentials)),
-                    Err(PairError::LinkButtonNotPressed) if Instant::now() < deadline => {
-                        tokio::time::sleep(Duration::from_secs(2)).await;
-                    }
-                    Err(PairError::LinkButtonNotPressed) => {
-                        bail!("the link button was not pressed within a minute")
-                    }
-                    Err(PairError::Other(e)) => return Err(e),
-                }
-            }
+            let credentials = hue::pair_waiting(&host, &device).await?;
+            Ok((host, credentials))
         };
         let abort = self.run_job(job, cx, |this, result, cx| {
             this.pairing = Pairing::Idle;
@@ -310,13 +272,6 @@ impl MainView {
         );
     }
 
-    fn syncing(&self) -> bool {
-        matches!(
-            self.status.state,
-            EngineState::Starting | EngineState::Streaming
-        )
-    }
-
     fn render_status(&self, theme: Theme, cx: &mut Context<Self>) -> impl IntoElement {
         let (headline, colour) = match &self.status.state {
             EngineState::Idle => ("Not syncing".to_owned(), theme.muted),
@@ -337,7 +292,7 @@ impl MainView {
             _ => "Ready".into(),
         };
         let can_start = self.bridge.is_paired() && !self.bridge.entertainment_config_id.is_empty();
-        let syncing = self.syncing();
+        let syncing = self.status.state.is_active();
 
         card(theme)
             .child(
@@ -381,13 +336,14 @@ impl MainView {
                         .min_w(px(72.)),
                     ),
             )
-            .when_some(
-                match &self.status.state {
-                    EngineState::Error(message) => Some(message.clone()),
-                    _ => None,
-                },
-                |this, message| this.child(div().text_sm().text_color(theme.danger).child(message)),
-            )
+            .when_some(self.status.state.error(), |this, message| {
+                this.child(
+                    div()
+                        .text_sm()
+                        .text_color(theme.danger)
+                        .child(message.to_owned()),
+                )
+            })
     }
 
     fn render_bridge(&self, theme: Theme, cx: &mut Context<Self>) -> AnyElement {
@@ -523,7 +479,7 @@ impl MainView {
                     let selected = area.id == self.bridge.entertainment_config_id;
                     let id = area.id.clone();
                     let mut detail = format!("{} lights", area.channels.len());
-                    if area.status == "active" && !(selected && self.syncing()) {
+                    if area.status == "active" && !(selected && self.status.state.is_active()) {
                         detail.push_str(" · in use by another app");
                     }
                     div()
@@ -638,6 +594,26 @@ impl Render for MainView {
             .child(self.render_sliders(theme, cx))
             .child(self.render_general(theme, cx))
     }
+}
+
+/// Copy every value from `rx` into the view until either side goes away.
+fn watch<T: Clone + 'static>(
+    mut rx: tokio::sync::watch::Receiver<T>,
+    cx: &mut Context<MainView>,
+    apply: fn(&mut MainView, T),
+) -> Task<()> {
+    cx.spawn(async move |this, cx| {
+        while rx.changed().await.is_ok() {
+            let value = rx.borrow_and_update().clone();
+            let updated = this.update(cx, |this, cx| {
+                apply(this, value);
+                cx.notify();
+            });
+            if updated.is_err() {
+                break;
+            }
+        }
+    })
 }
 
 fn card(theme: Theme) -> gpui::Div {
