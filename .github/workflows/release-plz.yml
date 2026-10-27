@@ -25,6 +25,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # cargo publish (verify) and cargo-semver-checks compile the crates, which link GStreamer and glib.
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $(cat packaging/linux/build-deps-apt.txt)
       - run: rustup toolchain install
       - uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5.146
         with:
@@ -48,6 +53,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # cargo publish (verify) and cargo-semver-checks compile the crates, which link GStreamer and glib.
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $(cat packaging/linux/build-deps-apt.txt)
       - run: rustup toolchain install
       - uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5.146
         with:
