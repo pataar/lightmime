@@ -16,7 +16,7 @@ Sync does, over the Entertainment API, so the lights follow the picture with low
 - **Headless if you like.** `lightmime run` syncs without a window, for example as a systemd user service.
 - **Home Assistant, optionally.** Turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders, so a dashboard or an automation can start it. Without MQTT it never talks to anything but your bridge.
-- **Light on resources.** Syncing at 30 fps takes about 1.5 % of one CPU core and 36 MB of memory; see
+- **Light on resources.** Syncing at 30 fps takes about 1 % of one CPU core and 36 MB of memory; see
   [Compared with other tools](comparison.html#resource-use).
 
 lightmime runs on Linux. Wayland is the main target; an X11 session works too, as long as its portal offers screen

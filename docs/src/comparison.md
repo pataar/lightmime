@@ -3,16 +3,16 @@
 ## Resource use
 
 lightmime is one native binary with no interpreter, browser engine or web server. The compositor copies the screen
-into PipeWire; lightmime drops frames above the sync rate and scales each one down to 64 × 36 pixels before converting
-it, so colour mapping only ever looks at 2,304 pixels a frame. See [How it works](how-it-works.md).
+into PipeWire at no more than 60 fps; lightmime drops frames above the sync rate and scales each one down to 64 × 36
+pixels before converting it, so colour mapping only ever looks at 2,304 pixels a frame. See [How it works](how-it-works.md).
 
 Measured with `lightmime run` syncing a 3440 × 1440 desktop to a four-light area at 30 fps, with the
 [Home Assistant](home-assistant.md) bridge on, on an AMD Ryzen 9 5900XT, over 60 seconds:
 
 | | |
 |---|---|
-| CPU | about 1.5 % of one core (0.7 % user, 0.7 % system) |
-| Memory | 36 MB resident, 27 MB proportional set size |
+| CPU | about 0.9 % of one core (0.5 % user, 0.4 % system) |
+| Memory | 36 MB resident, 26 MB proportional set size |
 | Binary | 12.5 MB headless, 40 MB with the window and tray (stripped) |
 
 To check it on your own machine while syncing:

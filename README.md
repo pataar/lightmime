@@ -30,7 +30,7 @@ latency.
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders. See [Home Assistant](https://lightmime.pataar.nl/home-assistant.html).
 - **Light on resources**: one Rust binary that scales each frame down to 64×36 pixels before touching it. While syncing
-  at 30 fps it uses about 1.5 % of one CPU core and 36 MB of memory
+  at 30 fps it uses about 1 % of one CPU core and 36 MB of memory
   ([measurement](https://lightmime.pataar.nl/comparison.html#resource-use)).
 
 ## Install
