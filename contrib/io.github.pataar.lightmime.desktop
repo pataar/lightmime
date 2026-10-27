@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=lightmime
+GenericName=Screen light sync
+Comment=Sync Philips Hue lights with your screen
+Exec=lightmime gui
+Icon=lightmime
+Terminal=false
+Categories=Utility;
+Keywords=hue;philips;ambilight;sync;lights;screen;
+StartupWMClass=io.github.pataar.lightmime
+StartupNotify=true

@@ -25,7 +25,9 @@ crates/lightmime/          the `lightmime` binary
   src/main.rs              CLI: pair, import-lumux, areas, use-area, test, run
   src/settings.rs          AppConfig = core Config (flattened) + [mqtt]; load/save (0600, atomic)
   src/mqtt.rs              Home Assistant MQTT discovery bridge
-contrib/                   example config, systemd user unit
+contrib/                   example config, systemd user unit, .desktop file
+assets/brand/              logo, wordmark, palette (README.md), export.sh → hicolor PNGs
+assets/icons/hicolor/      app icon `lightmime` and tray icon `lightmime-symbolic` (SVG)
 ```
 
 ## Architecture rules

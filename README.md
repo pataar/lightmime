@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/lightmime-logo-dark.svg">
+    <img alt="lightmime" src="assets/brand/lightmime-logo.svg" width="440">
+  </picture>
+</p>
+
 # lightmime
 
 Sync Philips Hue lights with your screen on Linux, controlled from Home Assistant.
@@ -14,6 +21,8 @@ MQTT discovery, so syncing can be started from a dashboard or an automation.
 | --- | --- |
 | `crates/lightmime-core` | Library: capture, colour mapping, Hue REST + DTLS streaming, and the `Engine` that ties them together. No UI. |
 | `crates/lightmime` | The `lightmime` binary: CLI for pairing and testing, and the daemon with the Home Assistant MQTT bridge. |
+
+Logo, icons and colours are in [`assets/brand/`](assets/brand/README.md).
 
 A GUI can be added as another crate that embeds `lightmime_core::Engine` (start,
 stop, live settings and a status stream), exactly like the daemon does.
@@ -72,6 +81,15 @@ systemctl --user enable --now lightmime
 ```
 
 The service runs inside your graphical session, which the screen-cast portal needs.
+
+## Desktop integration
+
+For the GUI's launcher entry, window icon and tray icon:
+
+```sh
+install -Dm644 contrib/io.github.pataar.lightmime.desktop ~/.local/share/applications/io.github.pataar.lightmime.desktop
+cp -r assets/icons/hicolor ~/.local/share/icons/
+```
 
 ## How it works
 
