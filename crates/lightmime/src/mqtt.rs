@@ -403,10 +403,8 @@ impl MqttBridge {
 
     /// Keep slider changes across restarts.
     fn persist_settings(&self) {
-        let result = AppConfig::load(&self.config_path).and_then(|mut config| {
-            config.core.sync = self.engine.settings();
-            config.save(&self.config_path)
-        });
+        let settings = self.engine.settings();
+        let result = AppConfig::update(&self.config_path, |config| config.core.sync = settings);
         if let Err(e) = result {
             tracing::warn!("could not save settings: {e:#}");
         }

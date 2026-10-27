@@ -1,6 +1,7 @@
 //! The daemon's config file: the core config plus daemon-only sections.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use anyhow::{Context, Result};
 use lightmime_core::Config;
@@ -101,6 +102,17 @@ impl AppConfig {
         std::fs::rename(&tmp, path).with_context(|| format!("replacing {}", path.display()))?;
         Ok(())
     }
+
+    /// Load, change and save the config under a process-wide lock, so the
+    /// window and MQTT, which share a process, don't overwrite each other's
+    /// changes or the temporary file.
+    pub fn update(path: &Path, change: impl FnOnce(&mut Self)) -> Result<()> {
+        static LOCK: Mutex<()> = Mutex::new(());
+        let _guard = LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut config = Self::load(path)?;
+        change(&mut config);
+        config.save(path)
+    }
 }
 
 /// Saves what the window changes into the config file, keeping the sections
@@ -109,21 +121,12 @@ impl AppConfig {
 pub struct FileStore(pub PathBuf);
 
 #[cfg(feature = "gui")]
-impl FileStore {
-    fn modify(&self, change: impl FnOnce(&mut AppConfig)) -> Result<()> {
-        let mut config = AppConfig::load(&self.0)?;
-        change(&mut config);
-        config.save(&self.0)
-    }
-}
-
-#[cfg(feature = "gui")]
 impl lightmime_gui::Store for FileStore {
     fn save_bridge(&self, bridge: &lightmime_core::BridgeConfig) -> Result<()> {
-        self.modify(|config| config.core.bridge = bridge.clone())
+        AppConfig::update(&self.0, |config| config.core.bridge = bridge.clone())
     }
 
     fn save_sync(&self, sync: &lightmime_core::SyncSettings) -> Result<()> {
-        self.modify(|config| config.core.sync = sync.clone())
+        AppConfig::update(&self.0, |config| config.core.sync = sync.clone())
     }
 }
