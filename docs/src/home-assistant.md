@@ -39,7 +39,9 @@ the bridge keys or anything else on the machine. To keep it that way:
 ## Entities
 
 `<node>` is the machine's hostname in lowercase, with anything but letters and digits replaced by `_`
-(or `node_id` from the config).
+(or `node_id` from the config). Two machines with the same `<node>` share entities and keep disconnecting each
+other from the broker, so give each one its own `node_id` if their hostnames match. For the same reason, enable
+MQTT in only one lightmime process per machine.
 
 | Entity | What it does |
 |---|---|
