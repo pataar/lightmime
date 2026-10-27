@@ -6,7 +6,11 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, ensure};
 use lightmime_core::{Engine, EngineState, Status, SyncSettings};
-use rumqttc::{AsyncClient, Event, Incoming, LastWill, MqttOptions, QoS, Transport};
+use openssl::x509::X509;
+use rumqttc::tokio_native_tls::native_tls;
+use rumqttc::{
+    AsyncClient, Event, Incoming, LastWill, MqttOptions, QoS, TlsConfiguration, Transport,
+};
 use serde_json::{Value, json};
 use tokio::sync::watch;
 
@@ -199,27 +203,25 @@ impl MqttBridge {
     }
 
     fn tls_transport(&self) -> Result<Transport> {
+        // OpenSSL reads the system's CAs itself.
+        let mut builder = native_tls::TlsConnector::builder();
         if !self.config.ca_file.is_empty() {
-            let ca = std::fs::read(&self.config.ca_file)
-                .with_context(|| format!("reading MQTT CA file {}", self.config.ca_file))?;
-            return Ok(Transport::tls(ca, None, None));
+            let file = &self.config.ca_file;
+            let pem =
+                std::fs::read(file).with_context(|| format!("reading MQTT CA file {file}"))?;
+            let certs = X509::stack_from_pem(&pem)
+                .with_context(|| format!("parsing MQTT CA file {file}"))?;
+            ensure!(!certs.is_empty(), "no certificates in MQTT CA file {file}");
+            // Trust only the given CA, not the system's as well.
+            builder.disable_built_in_roots(true);
+            for cert in certs {
+                builder.add_root_certificate(native_tls::Certificate::from_der(&cert.to_der()?)?);
+            }
         }
-        // rumqttc's default TLS config panics when a system certificate fails
-        // to load, so build it here and only warn.
-        let native = rustls_native_certs::load_native_certs();
-        for error in &native.errors {
-            tracing::warn!("skipping a system CA certificate: {error}");
-        }
-        let mut roots = rustls::RootCertStore::empty();
-        roots.add_parsable_certificates(native.certs);
-        ensure!(
-            !roots.is_empty(),
-            "no system CA certificates found; set ca_file in [mqtt]"
-        );
-        let config = rustls::ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
-        Ok(Transport::tls_with_config(config.into()))
+        let connector = builder.build().context("setting up TLS for MQTT")?;
+        Ok(Transport::tls_with_config(
+            TlsConfiguration::NativeConnector(connector),
+        ))
     }
 
     /// Publish discovery configs, subscribe to commands and push current state.
