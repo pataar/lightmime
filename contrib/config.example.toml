@@ -1,0 +1,38 @@
+# ~/.config/lightmime/config.toml
+
+[bridge]
+host = "192.168.1.20"
+# Filled in by `lightmime pair` or `lightmime import-lumux`.
+app_key = ""
+client_key = ""
+# Set with `lightmime use-area <name>`.
+entertainment_config_id = ""
+
+[capture]
+# "monitor" or "window"
+source = "monitor"
+# Frames are downscaled to this size before sampling.
+width = 64
+height = 36
+
+[sync]
+fps = 30
+# 0.0-1.0
+brightness = 1.0
+# 0.0 (instant) to 0.95 (very slow)
+smoothing = 0.3
+# 1.0 keeps the screen's saturation
+saturation = 1.2
+# Sampled region per light, as a fraction of the screen
+region_size = 0.3
+
+[mqtt]
+enabled = true
+host = "homeassistant.local"
+port = 1883
+username = "lightmime"
+password = "change-me"
+discovery_prefix = "homeassistant"
+base_topic = "lightmime"
+# Defaults to the hostname.
+node_id = ""
