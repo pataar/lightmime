@@ -61,7 +61,7 @@ enum Command {
     Start,
     Stop,
     SetBridge(BridgeConfig),
-    StreamFailed(String),
+    StreamFailed { session_id: u64, reason: String },
 }
 
 /// Handle to a running engine. Cheap to clone; the engine stops when the last
@@ -88,6 +88,7 @@ impl Engine {
             status: Arc::new(status_tx),
             commands: commands.clone(),
             session: None,
+            sessions_opened: 0,
         };
         tokio::spawn(actor.run(command_rx));
         Self {
@@ -149,9 +150,11 @@ struct Actor {
     status: Arc<watch::Sender<Status>>,
     commands: mpsc::UnboundedSender<Command>,
     session: Option<Session>,
+    sessions_opened: u64,
 }
 
 struct Session {
+    id: u64,
     bridge: Bridge,
     area_id: String,
     capture: ScreenCapture,
@@ -178,7 +181,12 @@ impl Actor {
                             self.start().await;
                         }
                     }
-                    Some(Command::StreamFailed(reason)) => self.fail(reason).await,
+                    // A thread can fail after its session was stopped or replaced; that must not end the current one.
+                    Some(Command::StreamFailed { session_id, reason }) => {
+                        if self.session.as_ref().is_some_and(|s| s.id == session_id) {
+                            self.fail(reason).await;
+                        }
+                    }
                     None => break,
                 },
                 Ok(()) = self.settings.changed() => {
@@ -276,17 +284,23 @@ impl Actor {
             status: self.status.clone(),
             stop: stop.clone(),
         };
+        self.sessions_opened += 1;
+        let session_id = self.sessions_opened;
         let commands = self.commands.clone();
         let thread = std::thread::Builder::new()
             .name("lightmime-stream".into())
             .spawn(move || {
                 if let Err(e) = worker.run() {
-                    let _ = commands.send(Command::StreamFailed(format!("{e:#}")));
+                    let _ = commands.send(Command::StreamFailed {
+                        session_id,
+                        reason: format!("{e:#}"),
+                    });
                 }
             })
             .context("spawning the streaming thread")?;
 
         Ok(Session {
+            id: session_id,
             bridge,
             area_id: area.id,
             capture,
@@ -297,6 +311,7 @@ impl Actor {
 
     async fn stop_session(&mut self) {
         let Some(Session {
+            id: _,
             bridge,
             area_id,
             capture,
