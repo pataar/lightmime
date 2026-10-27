@@ -83,6 +83,13 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
 
 More in [How it works](https://lightmime.pataar.nl/how-it-works.html).
 
+## Build your own frontend
+
+The engine is a separate crate, [`lightmime-core`](crates/lightmime-core/README.md), with no user interface: capture,
+colour mapping, pairing, area listing and streaming behind a small `Engine` handle. The bundled window, daemon and CLI
+use nothing else, so a GTK, Qt or web frontend can do the same.
+[`examples/minimal.rs`](crates/lightmime-core/examples/minimal.rs) pairs, picks an area and syncs in about 70 lines.
+
 ## Compared with Lumux and HyperHDR
 
 | | lightmime | [Lumux](https://github.com/enginkirmaci/lumux) | [HyperHDR](https://github.com/awawa-dev/HyperHDR) |

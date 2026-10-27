@@ -24,6 +24,7 @@ crates/lightmime-core/     library, no UI, no MQTT
   src/hue/api.rs           CLIP v2 REST: pair(), discover() (discovery.meethue.com), Bridge (areas, start/stop streaming, PSK identity)
   src/hue/stream.rs        EntertainmentStream: DTLS 1.2 PSK + HueStream v2 messages (blocking)
   src/engine.rs            Engine handle + actor; owns capture and bridge session, runs the stream thread
+  examples/minimal.rs      smallest frontend: pair, first area, sync until Ctrl-C (keep it building)
 crates/lightmime/          the `lightmime` binary
   src/main.rs              CLI: pair, import-lumux, areas, use-area, test, run, gui (feature `gui`, default)
   src/settings.rs          AppConfig = core Config (flattened) + [mqtt]; load/save (0600, atomic); FileStore for the GUI
@@ -43,7 +44,8 @@ assets/brand/              logo, wordmark, palette (README.md), export.sh → hi
 assets/icons/hicolor/      app icon `lightmime` and tray icon `lightmime-symbolic` (SVG)
 docs/                      mdbook site (book.toml, src/, theme/); Pages also hosts the Flatpak repo
 packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bundle), flatpak-repo.sh (site repo), apt build deps
-.github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release)
+.github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release),
+                           dependabot-auto-merge.yml (non-major updates squash-merge once `check` passes)
 ```
 
 ## Architecture rules
@@ -154,7 +156,7 @@ and push the `vX.Y.Z` tag (with `RELEASE_PLZ_TOKEN`, so the tag starts workflows
 the tag matches, builds the tarballs and Flatpak bundles (x86_64, aarch64),
 creates the GitHub release and triggers `docs.yml`, which imports the bundles
 into the Flatpak repo on the site (signed when the `FLATPAK_GPG_PRIVATE_KEY`
-secret is set). Nothing is published to crates.io.
+secret is set).
 
 ## Testing against real hardware
 

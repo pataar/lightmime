@@ -1,0 +1,21 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository_owner == 'pataar'
+    runs-on: ubuntu-latest
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      # Majors may need code changes; gpui-pre is an unversioned Zed snapshot, so both get a human look.
+      - if: steps.meta.outputs.update-type != 'version-update:semver-major' && steps.meta.outputs.dependency-group != 'gpui'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          # A merge made with the default GITHUB_TOKEN would not start CI or release-plz on main.
+          GH_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}

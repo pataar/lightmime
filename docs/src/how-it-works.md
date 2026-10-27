@@ -44,4 +44,13 @@ The repository is a Cargo workspace:
 | `lightmime-gui` | The window and tray icon, built with [gpui](https://gpui.rs). |
 | `lightmime` | The binary: the CLI, the headless daemon and the Home Assistant bridge. |
 
+### Your own frontend
+
+`lightmime-core` can drive a frontend you write yourself. Create an `Engine` inside a tokio runtime, then call
+`start`, `stop`, `update_settings` and `set_bridge` and watch `subscribe()` for its state. Pairing and area listing are
+in `lightmime_core::hue`. The [crate README](https://github.com/pataar/lightmime/blob/main/crates/lightmime-core/README.md)
+covers the details, and
+[`examples/minimal.rs`](https://github.com/pataar/lightmime/blob/main/crates/lightmime-core/examples/minimal.rs) is a
+complete frontend in one file.
+
 See [AGENTS.md](https://github.com/pataar/lightmime/blob/main/AGENTS.md) for the architecture and protocol details.
