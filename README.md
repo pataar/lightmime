@@ -83,3 +83,8 @@ The service runs inside your graphical session, which the screen-cast portal nee
 3. **Streaming**: the area is started through the CLIP v2 API, then HueStream
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port
    2100, one datagram per frame.
+
+## Development
+
+See [AGENTS.md](AGENTS.md) for the architecture, protocol notes, the MQTT
+contract and the build/test commands.
