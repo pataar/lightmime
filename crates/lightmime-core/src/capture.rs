@@ -33,6 +33,7 @@ impl FrameSource {
 /// portal session.
 pub struct ScreenCapture {
     pipeline: gst::Pipeline,
+    limit: gst::Element,
     rate: gst::Element,
     latest: Arc<Mutex<Option<Frame>>>,
     session: Session<Screencast>,
@@ -99,7 +100,7 @@ impl ScreenCapture {
             "pipewiresrc fd={} path={node_id} do-timestamp=true keepalive-time=1000",
             fd.as_raw_fd()
         );
-        let (pipeline, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
+        let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
         pipeline
             .set_state(gst::State::Playing)
             .context("starting the capture pipeline")?;
@@ -108,6 +109,7 @@ impl ScreenCapture {
         Ok((
             Self {
                 pipeline,
+                limit,
                 rate,
                 latest,
                 session,
@@ -122,11 +124,20 @@ impl ScreenCapture {
         FrameSource(self.latest.clone())
     }
 
-    /// Change how many frames per second are converted, to follow the sync
-    /// rate; frames the stream loop would skip are not worth processing.
+    /// Change how many frames per second are captured, to follow the sync
+    /// rate; frames the stream loop would skip are not worth copying.
+    ///
+    /// A new rate makes pipewiresrc reconnect the stream, so the caps are only touched when it changes.
     pub fn set_max_fps(&self, fps: u32) {
-        self.rate
-            .set_property("max-rate", fps.clamp(1, MAX_FPS) as i32);
+        let fps = fps.clamp(1, MAX_FPS);
+        if self.rate.property::<i32>("max-rate") == fps as i32 {
+            return;
+        }
+        self.rate.set_property("max-rate", fps as i32);
+        match framerate_caps(fps).parse::<gst::Caps>() {
+            Ok(caps) => self.limit.set_property("caps", caps),
+            Err(err) => tracing::warn!("framerate caps for {fps} fps: {err}"),
+        }
     }
 
     /// Report a pipeline error, if one happened since the last call.
@@ -157,25 +168,23 @@ fn build_pipeline(
     config: &CaptureConfig,
     max_fps: u32,
     latest: Arc<Mutex<Option<Frame>>>,
-) -> Result<(gst::Pipeline, gst::Element)> {
-    // `max-framerate` asks the compositor not to render and copy frames
-    // faster than MAX_FPS on high-refresh screens. It is a list, not a range:
-    // pipewiresrc makes the first value the default, and for a range that is
-    // the minimum. Lower entries keep negotiation working on slower screens.
+) -> Result<(gst::Pipeline, gst::Element, gst::Element)> {
+    // `limit` asks the compositor not to copy frames faster than the sync rate; see `framerate_caps`.
+    // videorate still drops anything above it, for compositors that ignore the limit.
     //
-    // Then drop frames above the sync rate before any per-pixel work, and
-    // scale down before converting, so conversion runs on a few thousand
+    // Scale down before converting, so conversion runs on a few thousand
     // pixels. Buffers are not copied out of PipeWire (`always-copy`): the
     // pipeline releases them as soon as they are scaled.
+    let max_fps = max_fps.clamp(1, MAX_FPS);
     let description = format!(
         "{source} \
-         ! capsfilter caps=\"video/x-raw,max-framerate=(fraction){{ {MAX_FPS}/1, 50/1, 30/1, 25/1, 24/1 }}\" \
+         ! capsfilter name=limit caps=\"{caps}\" \
          ! videorate name=rate drop-only=true max-rate={max_fps} \
          ! videoscale add-borders=false \
          ! video/x-raw,width={w},height={h},pixel-aspect-ratio=1/1 \
          ! videoconvert ! video/x-raw,format=RGB \
          ! appsink name=sink max-buffers=1 drop=true sync=false",
-        max_fps = max_fps.clamp(1, MAX_FPS),
+        caps = framerate_caps(max_fps),
         w = config.width,
         h = config.height,
     );
@@ -187,6 +196,9 @@ fn build_pipeline(
         .by_name("sink")
         .and_then(|e| e.downcast::<gst_app::AppSink>().ok())
         .ok_or_else(|| anyhow!("capture pipeline has no appsink"))?;
+    let limit = pipeline
+        .by_name("limit")
+        .ok_or_else(|| anyhow!("capture pipeline has no framerate limit"))?;
     let rate = pipeline
         .by_name("rate")
         .ok_or_else(|| anyhow!("capture pipeline has no videorate"))?;
@@ -204,7 +216,39 @@ fn build_pipeline(
             })
             .build(),
     );
-    Ok((pipeline, rate))
+    Ok((pipeline, limit, rate))
+}
+
+/// Caps limiting the compositor to `fps`.
+///
+/// `max-framerate` is a list, not a range: pipewiresrc makes the first value the default, and for a range that
+/// is the minimum. The lower common rates after it keep negotiation working on screens slower than `fps`.
+fn framerate_caps(fps: u32) -> String {
+    let rates: Vec<String> = std::iter::once(fps)
+        .chain([50, 30, 25, 24].into_iter().filter(|&rate| rate < fps))
+        .map(|rate| format!("{rate}/1"))
+        .collect();
+    format!(
+        "video/x-raw,max-framerate=(fraction){{ {} }}",
+        rates.join(", ")
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn framerate_caps_prefer_the_sync_rate() {
+        assert_eq!(
+            framerate_caps(30),
+            "video/x-raw,max-framerate=(fraction){ 30/1, 25/1, 24/1 }"
+        );
+        assert_eq!(
+            framerate_caps(10),
+            "video/x-raw,max-framerate=(fraction){ 10/1 }"
+        );
+    }
 }
 
 /// Copy a sample into a tightly packed RGB frame (GStreamer may pad rows).
