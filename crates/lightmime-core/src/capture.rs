@@ -234,23 +234,6 @@ fn framerate_caps(fps: u32) -> String {
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn framerate_caps_prefer_the_sync_rate() {
-        assert_eq!(
-            framerate_caps(30),
-            "video/x-raw,max-framerate=(fraction){ 30/1, 25/1, 24/1 }"
-        );
-        assert_eq!(
-            framerate_caps(10),
-            "video/x-raw,max-framerate=(fraction){ 10/1 }"
-        );
-    }
-}
-
 /// Copy a sample into a tightly packed RGB frame (GStreamer may pad rows).
 fn sample_to_frame(sample: &gst::Sample) -> Option<Frame> {
     let info = gst_video::VideoInfo::from_caps(sample.caps()?).ok()?;
@@ -269,4 +252,21 @@ fn sample_to_frame(sample: &gst::Sample) -> Option<Frame> {
         height,
         data,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn framerate_caps_prefer_the_sync_rate() {
+        assert_eq!(
+            framerate_caps(30),
+            "video/x-raw,max-framerate=(fraction){ 30/1, 25/1, 24/1 }"
+        );
+        assert_eq!(
+            framerate_caps(10),
+            "video/x-raw,max-framerate=(fraction){ 10/1 }"
+        );
+    }
 }
