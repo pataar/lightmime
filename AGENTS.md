@@ -41,7 +41,7 @@ crates/lightmime-gui/      window + tray; library called by `lightmime gui`, no 
   src/screenshots.rs       #[ignore] test rendering docs/src/images/window-{light,dark}.png headless
 contrib/                   example config, systemd user unit, .desktop file (single source; Flatpak rewrites Icon=)
 assets/brand/              logo, wordmark, palette (README.md), export.sh → hicolor PNGs
-assets/icons/hicolor/      app icon `lightmime` and tray icon `lightmime-symbolic` (SVG)
+assets/icons/hicolor/      app icon `lightmime` (scalable + pixel-aligned 16/24 px drawings) and tray icon `lightmime-symbolic` (SVG)
 docs/                      mdbook site (book.toml, src/, theme/); Pages also hosts the Flatpak repo
 packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bundle), flatpak-repo.sh (site repo), apt build deps
 .github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release),

@@ -9,11 +9,12 @@ needed), with the two i-dots as the warm and cool ends of the spectrum.
 | File | Use |
 | --- | --- |
 | `../icons/hicolor/scalable/apps/lightmime.svg` | App icon (256 px tile). Desktop file, window icon, avatar. |
+| `../icons/hicolor/{16x16,24x24}/apps/lightmime.svg` | The app icon redrawn on a 16 and 24 px grid, so it stays sharp at 16, 24, 32 and 48 px (32 and 48 link to them). |
 | `../icons/hicolor/symbolic/apps/lightmime-symbolic.svg` | Monochrome 16 px icon for the tray and symbolic contexts. |
 | `lightmime-logo.svg` | Icon + wordmark, for light backgrounds. |
 | `lightmime-logo-dark.svg` | Icon + wordmark, for dark backgrounds. |
 | `lightmime-wordmark.svg` | Wordmark alone, for light backgrounds. |
-| `export.sh` | Renders the app icon to PNGs in a `hicolor` icon theme tree (needs `rsvg-convert`). |
+| `export.sh` | Renders the app icon (the small drawings at their sizes) to PNGs in a `hicolor` icon theme tree (needs `rsvg-convert`). |
 
 ## Colours
 
