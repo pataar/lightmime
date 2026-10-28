@@ -7,8 +7,11 @@ icons=$(dirname "$0")/../icons/hicolor
 out=${1:-target/icons}
 for size in 16 24 32 48 64 128 256 512; do
     dir="$out/hicolor/${size}x${size}/apps"
+    # Small sizes have their own pixel-aligned drawing; the scalable one blurs there.
+    source="$icons/${size}x${size}/apps/lightmime.svg"
+    [ -e "$source" ] || source="$icons/scalable/apps/lightmime.svg"
     mkdir -p "$dir"
-    rsvg-convert -w "$size" -h "$size" "$icons/scalable/apps/lightmime.svg" -o "$dir/lightmime.png"
+    rsvg-convert -w "$size" -h "$size" "$source" -o "$dir/lightmime.png"
 done
 mkdir -p "$out/hicolor/scalable/apps" "$out/hicolor/symbolic/apps"
 cp "$icons/scalable/apps/lightmime.svg" "$out/hicolor/scalable/apps/"
