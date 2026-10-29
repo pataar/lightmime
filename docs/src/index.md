@@ -6,9 +6,6 @@ lightmime watches what is on your screen and colours the lights of a Hue enterta
 the picture on the lights to the left of the TV, the top on the lights above it. It talks to the bridge the way Hue
 Sync does, over the Entertainment API, so the lights follow the picture with low latency.
 
-<img class="screenshot" src="images/window-light.png#gh-light-mode-only" alt="The lightmime window while syncing to an area with six lights">
-<img class="screenshot" src="images/window-dark.png#gh-dark-mode-only" alt="The lightmime window while syncing to an area with six lights">
-
 - **A small window and a tray icon.** Pair with the bridge, pick an entertainment area and start syncing; tune
   brightness, smoothing and saturation while it runs. The tray starts and stops syncing without opening anything.
 - **Made for Wayland.** Screen capture goes through the desktop's screen-cast portal and PipeWire, so it works on KDE
