@@ -110,7 +110,9 @@ packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bu
   Max 20 channels. One `ssl_write` = one datagram (see `Datagram` in
   `stream.rs`); never buffer several messages into one write.
 - The bridge drops the session after ~10 s without data, so the loop sends
-  black until the first frame arrives.
+  the lights' own state (read over REST before `start`) until the first frame
+  arrives, then wipes into sync left to right; on stop it wipes back before
+  closing, so the stop takes ~1.2 s longer.
 - Channel positions: x = left/right, y = front/back (ignored), z = bottom/top,
   all in -1..1. `Zone::from_channel` maps x and z to screen coordinates.
 - The bridge uses a certificate from Signify's own CA; the REST client accepts

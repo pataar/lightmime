@@ -260,6 +260,18 @@ impl Actor {
             }
         }
 
+        // Read before starting the area, while the lights still show their own state.
+        let room = bridge.channel_colors(&area).await.unwrap_or_else(|e| {
+            tracing::warn!("could not read the lights' state, fading from black: {e:#}");
+            area.channels
+                .iter()
+                .map(|c| ChannelColor {
+                    channel_id: c.channel_id,
+                    rgb: [0; 3],
+                })
+                .collect()
+        });
+
         bridge
             .set_streaming(&area.id, true)
             .await
@@ -280,6 +292,7 @@ impl Actor {
             area_id: area.id.clone(),
             frames: capture.frame_source(),
             mapper: ColorMapper::new(zones),
+            room,
             settings: self.settings.clone(),
             status: self.status.clone(),
             stop: stop.clone(),
@@ -347,6 +360,8 @@ struct StreamWorker {
     area_id: String,
     frames: crate::capture::FrameSource,
     mapper: ColorMapper,
+    /// What the lights showed before streaming; sync fades in from it and back to it on stop.
+    room: Vec<ChannelColor>,
     settings: watch::Receiver<SyncSettings>,
     status: Arc<watch::Sender<Status>>,
     stop: Arc<AtomicBool>,
@@ -366,23 +381,20 @@ impl StreamWorker {
 
         let mut sent = 0u32;
         let mut window = Instant::now();
-        let black: Vec<ChannelColor> = self
-            .mapper
-            .zones()
-            .iter()
-            .map(|z| ChannelColor {
-                channel_id: z.channel_id,
-                rgb: [0; 3],
-            })
-            .collect();
+        let mut first_frame: Option<Instant> = None;
+        let mut colors = self.room.clone();
 
         while !self.stop.load(Ordering::Relaxed) {
             let tick = Instant::now();
             let settings = self.settings.borrow().clone();
-            let colors = match self.frames.latest() {
-                Some(frame) => self.mapper.map(&frame, &settings),
+            colors = match self.frames.latest() {
+                Some(frame) => {
+                    let live = self.mapper.map(&frame, &settings);
+                    let shown = first_frame.get_or_insert_with(Instant::now).elapsed();
+                    wipe(&self.room, &live, self.mapper.zones(), shown)
+                }
                 // Keep the session alive until the first frame arrives.
-                None => black.clone(),
+                None => self.room.clone(),
             };
             stream.send(&colors)?;
             sent += 1;
@@ -401,7 +413,85 @@ impl StreamWorker {
                 std::thread::sleep(remaining);
             }
         }
+
+        let stopping = Instant::now();
+        while stopping.elapsed() < FADE {
+            stream.send(&wipe(
+                &colors,
+                &self.room,
+                self.mapper.zones(),
+                stopping.elapsed(),
+            ))?;
+            std::thread::sleep(Duration::from_millis(20));
+        }
         stream.close();
         Ok(())
+    }
+}
+
+/// How long the wipe between the lights' own state and sync takes to cross the area.
+const FADE: Duration = Duration::from_millis(1200);
+
+/// Crossfades `from` into `to` left to right; each light crosses over the last 40% of [`FADE`].
+fn wipe(
+    from: &[ChannelColor],
+    to: &[ChannelColor],
+    zones: &[Zone],
+    elapsed: Duration,
+) -> Vec<ChannelColor> {
+    let progress = elapsed.as_secs_f32() / FADE.as_secs_f32();
+    from.iter()
+        .zip(to)
+        .zip(zones)
+        .map(|((from, to), zone)| {
+            let level = ((progress - zone.x * 0.6) / 0.4).clamp(0.0, 1.0);
+            ChannelColor {
+                channel_id: to.channel_id,
+                rgb: std::array::from_fn(|i| {
+                    let (a, b) = (from.rgb[i] as f32, to.rgb[i] as f32);
+                    (a + (b - a) * level).round() as u16
+                }),
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn solid(channel_id: u8, value: u16) -> ChannelColor {
+        ChannelColor {
+            channel_id,
+            rgb: [value; 3],
+        }
+    }
+
+    #[test]
+    fn wipe_crosses_over_from_the_left() {
+        let zones = [
+            Zone {
+                channel_id: 0,
+                x: 0.0,
+                y: 0.5,
+            },
+            Zone {
+                channel_id: 1,
+                x: 1.0,
+                y: 0.5,
+            },
+        ];
+        let from = [solid(0, 1000), solid(1, 1000)];
+        let to = [solid(0, 65535), solid(1, 65535)];
+        let levels = |elapsed: Duration| {
+            wipe(&from, &to, &zones, elapsed)
+                .iter()
+                .map(|c| c.rgb[0])
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(levels(Duration::ZERO), [1000, 1000]);
+        let halfway = levels(FADE / 2);
+        assert!(halfway[0] > halfway[1], "left should lead: {halfway:?}");
+        assert_eq!(levels(FADE), [65535, 65535]);
     }
 }

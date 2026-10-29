@@ -125,6 +125,25 @@ fn srgb_to_linear(v: u8) -> f32 {
     TABLE[v as usize]
 }
 
+/// A Hue light's CIE xy colour and brightness (0..1) as stream RGB, using Signify's wide-gamut
+/// matrix.
+///
+/// ponytail: brightness scales the gamma-encoded value, assuming Hue's dimming curve is roughly
+/// perceptual; if lights jump when fading in or out of sync, this is the knob to tune.
+pub fn xy_to_rgb(x: f32, y: f32, brightness: f32) -> [u16; 3] {
+    let y = y.max(1e-4);
+    let (cie_x, cie_z) = (x / y, (1.0 - x - y) / y);
+    let rgb = [
+        1.656492 * cie_x - 0.354851 - 0.255038 * cie_z,
+        -0.707196 * cie_x + 1.655397 + 0.036152 * cie_z,
+        0.051713 * cie_x - 0.121364 + 1.01153 * cie_z,
+    ]
+    .map(|c| c.max(0.0));
+    let peak = rgb.iter().copied().fold(f32::EPSILON, f32::max);
+    let brightness = brightness.clamp(0.0, 1.0);
+    rgb.map(|c| (to_u16(c / peak) as f32 * brightness).round() as u16)
+}
+
 /// The bridge expects gamma-encoded values, like what the screen shows.
 fn to_u16(linear: f32) -> u16 {
     let v = linear.clamp(0.0, 1.0);
@@ -146,6 +165,23 @@ mod tests {
             height: 2,
             data: rgb.repeat(8),
         }
+    }
+
+    #[test]
+    fn white_point_is_neutral_and_dims() {
+        let [r, g, b] = xy_to_rgb(0.3127, 0.3290, 1.0);
+        let peak = r.max(g).max(b);
+        assert_eq!(peak, 65535);
+        assert!(r.min(g).min(b) > 60000, "{r} {g} {b}");
+        assert_eq!(xy_to_rgb(0.3127, 0.3290, 0.5).iter().max(), Some(&32768));
+        assert_eq!(xy_to_rgb(0.3127, 0.3290, 0.0), [0; 3]);
+    }
+
+    #[test]
+    fn red_xy_is_red() {
+        let [r, g, b] = xy_to_rgb(0.68, 0.31, 1.0);
+        assert_eq!(r, 65535);
+        assert!(g < 20000 && b < 20000, "{g} {b}");
     }
 
     #[test]
@@ -232,6 +268,7 @@ mod tests {
                 y: 0.0,
                 z: 1.0,
             },
+            members: Vec::new(),
         };
         let zone = Zone::from_channel(&channel);
         assert_eq!((zone.x, zone.y), (0.0, 0.0));

@@ -6,6 +6,9 @@ use anyhow::{Context, Result, anyhow, bail};
 use serde::Deserialize;
 use serde_json::json;
 
+use super::ChannelColor;
+use crate::color::xy_to_rgb;
+
 /// Error returned by [`pair`] while the bridge's link button has not been pressed.
 #[derive(Debug, thiserror::Error)]
 pub enum PairError {
@@ -135,6 +138,71 @@ pub struct Channel {
     pub channel_id: u8,
     #[serde(default)]
     pub position: Position,
+    /// Entertainment services this channel drives: one per light, or per segment of a gradient light.
+    #[serde(default)]
+    pub members: Vec<ChannelMember>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChannelMember {
+    pub service: ResourceRef,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResourceRef {
+    pub rid: String,
+}
+
+/// Any resource with an owning device, such as an entertainment service.
+#[derive(Deserialize)]
+struct Owned {
+    id: String,
+    owner: ResourceRef,
+}
+
+#[derive(Deserialize)]
+struct Light {
+    owner: ResourceRef,
+    on: LightOn,
+    dimming: Option<Dimming>,
+    color: Option<LightColor>,
+}
+
+#[derive(Deserialize)]
+struct LightOn {
+    on: bool,
+}
+
+#[derive(Deserialize)]
+struct Dimming {
+    /// Percent, 0..100.
+    brightness: f32,
+}
+
+#[derive(Deserialize)]
+struct LightColor {
+    xy: Xy,
+}
+
+#[derive(Deserialize)]
+struct Xy {
+    x: f32,
+    y: f32,
+}
+
+impl Light {
+    fn rgb(&self) -> [u16; 3] {
+        if !self.on.on {
+            return [0; 3];
+        }
+        let brightness = self.dimming.as_ref().map_or(1.0, |d| d.brightness / 100.0);
+        // D65 white for lights that report no colour.
+        let (x, y) = self
+            .color
+            .as_ref()
+            .map_or((0.3127, 0.3290), |c| (c.xy.x, c.xy.y));
+        xy_to_rgb(x, y, brightness)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -255,6 +323,48 @@ impl Bridge {
             bail!("bridge refused {action}: {}", error.description);
         }
         Ok(())
+    }
+
+    /// What each channel's light shows outside streaming (black when off), in the area's
+    /// channel order. Every segment of a gradient light gets the light's one colour.
+    pub async fn channel_colors(
+        &self,
+        area: &EntertainmentConfiguration,
+    ) -> Result<Vec<ChannelColor>> {
+        let services: Vec<Owned> = self.resources("entertainment").await?;
+        let lights: Vec<Light> = self.resources("light").await?;
+        Ok(area
+            .channels
+            .iter()
+            .map(|channel| {
+                let light = channel
+                    .members
+                    .first()
+                    .and_then(|member| services.iter().find(|s| s.id == member.service.rid))
+                    .and_then(|service| lights.iter().find(|l| l.owner.rid == service.owner.rid));
+                ChannelColor {
+                    channel_id: channel.channel_id,
+                    rgb: light.map_or([0; 3], Light::rgb),
+                }
+            })
+            .collect())
+    }
+
+    async fn resources<T: serde::de::DeserializeOwned>(&self, kind: &str) -> Result<Vec<T>> {
+        let response: ClipResponse<T> = self
+            .client
+            .get(format!("https://{}/clip/v2/resource/{kind}", self.host))
+            .header("hue-application-key", &self.app_key)
+            .send()
+            .await
+            .with_context(|| format!("listing {kind} resources"))?
+            .json()
+            .await
+            .with_context(|| format!("parsing {kind} resources"))?;
+        if let Some(error) = response.errors.first() {
+            bail!("bridge error: {}", error.description);
+        }
+        Ok(response.data)
     }
 
     fn resource_url(&self, id: &str) -> String {
