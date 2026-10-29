@@ -132,8 +132,10 @@ them as a public API.
 
 ## Commands
 
-`mise install` brings codegraph (run `codegraph init -y` once per clone; it
-re-indexes on its own after that); `.mcp.json` registers its MCP server.
+`mise install` brings codegraph and mdbook. Run `codegraph init -y` once per
+clone and per worktree; a worktree inside this one otherwise reads the main
+checkout's index, which holds another branch. It re-indexes on its own after
+that; `.mcp.json` registers its MCP server.
 
 ```sh
 cargo build                              # debug build

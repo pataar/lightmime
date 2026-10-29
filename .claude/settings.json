@@ -4,6 +4,18 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true
   },
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo test:*)",
+      "Bash(codegraph explore:*)",
+      "Bash(codegraph node:*)",
+      "Bash(codegraph status:*)",
+      "Bash(codegraph sync:*)"
+    ]
+  },
   "extraKnownMarketplaces": {
     "ponytail": {
       "source": {
