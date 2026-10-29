@@ -58,7 +58,7 @@ fn screenshots() {
         cx.update(|cx| cx.set_global(ForceAppearance(appearance)));
         let shared = shared.clone();
         let window = cx
-            .open_window(size(px(440.), px(880.)), |window, cx| {
+            .open_window(size(px(440.), px(960.)), |window, cx| {
                 cx.new(|cx| {
                     let mut view = MainView::new(shared, window, cx);
                     view.show_demo();

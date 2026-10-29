@@ -133,7 +133,8 @@ header.top nav a:hover { color: var(--accent); }
 }
 .button.primary { background: #7c5cff; border-color: #7c5cff; color: #fff; }
 .button:hover { filter: brightness(1.08); }
-.shot { position: relative; justify-self: center; max-width: 380px; }
+/* 440 px is the window's own width: the 2× render then maps to whole device pixels and stays sharp. */
+.shot { position: relative; justify-self: center; max-width: 440px; }
 /* The glow behind the window is the point of the app: the screen's colours on the wall. */
 .shot::before {
     content: "";
@@ -350,7 +351,7 @@ footer a { color: var(--muted); }
             <div class="shot">
                 <picture>
                     <source media="(prefers-color-scheme: dark)" srcset="/docs/images/window-dark.png">
-                    <img src="/docs/images/window-light.png" width="440" height="880" fetchpriority="high"
+                    <img src="/docs/images/window-light.png" width="440" height="960" fetchpriority="high"
                         alt="The lightmime window while syncing to a Hue entertainment area with six lights">
                 </picture>
             </div>
