@@ -629,6 +629,7 @@ impl Render for MainView {
             .when(paired, |this| this.child(self.render_areas(theme, cx)))
             .child(self.render_sliders(theme, cx))
             .child(self.render_general(theme, cx))
+            .child(render_about(theme))
             .into_any_element();
         div()
             .size_full()
@@ -682,6 +683,33 @@ fn heading(theme: Theme, text: &'static str) -> gpui::Div {
         .font_weight(FontWeight::SEMIBOLD)
         .text_color(theme.muted)
         .child(text.to_uppercase())
+}
+
+/// Version, author and a link to the project, below the settings.
+fn render_about(theme: Theme) -> impl IntoElement {
+    const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
+    div()
+        .flex()
+        .justify_center()
+        .gap_1()
+        .text_xs()
+        .text_color(theme.muted)
+        .child(concat!(
+            "lightmime ",
+            env!("CARGO_PKG_VERSION"),
+            " · ",
+            env!("CARGO_PKG_AUTHORS"),
+            " ·"
+        ))
+        .child(
+            div()
+                .id("project-link")
+                .text_color(theme.accent)
+                .cursor_pointer()
+                .hover(|style| style.underline())
+                .on_click(|_, _, cx| cx.open_url(REPOSITORY))
+                .child(REPOSITORY.trim_start_matches("https://")),
+        )
 }
 
 fn section(theme: Theme, title: &'static str) -> gpui::Div {
