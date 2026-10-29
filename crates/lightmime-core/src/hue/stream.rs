@@ -5,7 +5,7 @@
 
 use std::io::{self, Read, Write};
 use std::net::{ToSocketAddrs, UdpSocket};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use openssl::ssl::{HandshakeError, SslContext, SslMethod, SslOptions, SslStream, SslVerifyMode};
@@ -49,6 +49,7 @@ pub struct EntertainmentStream {
     config_id: [u8; 36],
     sequence: u8,
     buffer: Vec<u8>,
+    round_trip: Duration,
 }
 
 impl EntertainmentStream {
@@ -68,6 +69,7 @@ impl EntertainmentStream {
 
         let mut last_error = anyhow!("no handshake attempted");
         for attempt in 1..=HANDSHAKE_ATTEMPTS {
+            let started = Instant::now();
             match handshake(host, psk_identity, &psk) {
                 Ok(tls) => {
                     return Ok(Self {
@@ -75,6 +77,8 @@ impl EntertainmentStream {
                         config_id,
                         sequence: 0,
                         buffer: Vec::with_capacity(16 + 36 + 7 * 20),
+                        // A DTLS 1.2 PSK handshake with a cookie exchange takes three round trips.
+                        round_trip: started.elapsed() / 3,
                     });
                 }
                 Err(e) => {
@@ -84,6 +88,11 @@ impl EntertainmentStream {
             }
         }
         Err(last_error.context("DTLS handshake with the bridge failed"))
+    }
+
+    /// Round trip to the bridge, estimated from the handshake. The stream itself gets no replies to time.
+    pub fn round_trip(&self) -> Duration {
+        self.round_trip
     }
 
     /// Send one frame. Channels missing from `colors` keep their last colour.
