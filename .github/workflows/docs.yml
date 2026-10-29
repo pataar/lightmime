@@ -27,7 +27,7 @@ jobs:
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: mdbook
-      - run: mdbook build docs
+      - run: docs/build.sh
       # Every deploy replaces the whole site, so each one carries the Flatpak repository as well.
       - name: Add the Flatpak repository
         if: github.event_name != 'pull_request'

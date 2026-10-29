@@ -6,7 +6,7 @@ open an issue first so we can agree on the approach before you write the code.
 ## Setup
 
 The toolchain is pinned in `rust-toolchain.toml`; rustup picks it up. You also need the development files of
-GStreamer, OpenSSL and xkbcommon; [Install → From source](https://lightmime.pataar.nl/install.html#from-source) lists
+GStreamer, OpenSSL and xkbcommon; [Install → From source](https://lightmime.pataar.nl/docs/install.html#from-source) lists
 the packages per distribution, and CI installs the ones in `packaging/linux/build-deps-apt.txt`.
 
 ```sh
@@ -30,7 +30,7 @@ cargo test --all-features
 - New logic comes with a test where it can have one; colour mapping and parsing can, streaming to a bridge can't.
 - Every new dependency gets a one-line comment in `Cargo.toml` saying why it is needed, when that is not obvious.
 - User-facing docs live in `docs/src/` (an [mdbook](https://rust-lang.github.io/mdBook/); `mdbook serve docs` previews
-  it). Update them with any change to commands, config keys, the window or Home Assistant entities.
+  it; `docs/site/index.html` is the landing page). Update them with any change to commands, config keys, the window or Home Assistant entities.
 - After changing the window, refresh the screenshots in the docs:
   `cargo test -p lightmime-gui screenshots -- --ignored` (needs a GPU or a software Vulkan driver).
 - Home Assistant entity keys and unique ids are a public API: renaming one creates a new entity for every user.

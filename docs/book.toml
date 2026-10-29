@@ -3,6 +3,11 @@ title = "lightmime"
 authors = ["pataar"]
 language = "en"
 src = "src"
+description = "Documentation for lightmime: sync Philips Hue lights with your screen on Linux, on Wayland and X11."
+
+# The landing page (site/) sits at the root of the site; build.sh puts it next to the book.
+[build]
+build-dir = "book/docs"
 
 [output.html]
 additional-css = ["theme/lightmime.css"]
@@ -10,5 +15,4 @@ default-theme = "light"
 preferred-dark-theme = "coal"
 git-repository-url = "https://github.com/pataar/lightmime"
 edit-url-template = "https://github.com/pataar/lightmime/edit/main/docs/{path}"
-site-url = "/"
-cname = "lightmime.pataar.nl"
+site-url = "/docs/"

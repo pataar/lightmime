@@ -8,7 +8,7 @@
 # lightmime
 
 <p>
-  <a href="https://lightmime.pataar.nl/"><img src="https://img.shields.io/badge/docs-lightmime.pataar.nl-7C5CFF" alt="Docs"></a>
+  <a href="https://lightmime.pataar.nl/docs/"><img src="https://img.shields.io/badge/docs-lightmime.pataar.nl-7C5CFF" alt="Docs"></a>
   <a href="https://github.com/pataar/lightmime/actions/workflows/ci.yml"><img src="https://github.com/pataar/lightmime/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/pataar/lightmime/releases/latest"><img src="https://img.shields.io/github/v/release/pataar/lightmime" alt="Release"></a>
 </p>
@@ -23,15 +23,15 @@ latency.
 <img src="docs/src/images/window-dark.png#gh-dark-mode-only" width="360" alt="The lightmime window while syncing">
 
 - **A small window and a tray icon**: pair with the bridge, pick an area, start syncing and tune brightness, smoothing
-  and saturation while it runs. See [Window and tray](https://lightmime.pataar.nl/gui.html).
+  and saturation while it runs. See [Window and tray](https://lightmime.pataar.nl/docs/gui.html).
 - **Made for Wayland**: capture goes through the screen-cast portal and PipeWire, on KDE Plasma, GNOME and wlroots
   compositors. You pick the screen once.
-- **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/background.html).
+- **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/docs/background.html).
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
-  and sliders. See [Home Assistant](https://lightmime.pataar.nl/home-assistant.html).
+  and sliders. See [Home Assistant](https://lightmime.pataar.nl/docs/home-assistant.html).
 - **Light on resources**: one Rust binary that scales each frame down to 64×36 pixels before touching it. While syncing
   at 30 fps it uses about 1 % of one CPU core and 36 MB of memory
-  ([measurement](https://lightmime.pataar.nl/comparison.html#resource-use)).
+  ([measurement](https://lightmime.pataar.nl/docs/comparison.html#resource-use)).
 
 ## Install
 
@@ -41,8 +41,8 @@ flatpak remote-add --user --if-not-exists lightmime https://lightmime.pataar.nl/
 flatpak install --user lightmime io.github.pataar.lightmime
 ```
 
-Release binaries and building from source are under [Install](https://lightmime.pataar.nl/install.html). Then follow
-the [Quickstart](https://lightmime.pataar.nl/quickstart.html): pair, choose an area, press Start.
+Release binaries and building from source are under [Install](https://lightmime.pataar.nl/docs/install.html). Then follow
+the [Quickstart](https://lightmime.pataar.nl/docs/quickstart.html): pair, choose an area, press Start.
 
 You need a Hue bridge with an entertainment area set up in the Hue app, and a desktop with PipeWire and an
 `xdg-desktop-portal` backend that offers screen casting.
@@ -58,7 +58,7 @@ lightmime run --start                # capture and sync until Ctrl-C
 lightmime gui                        # the window and tray icon
 ```
 
-See the [CLI reference](https://lightmime.pataar.nl/cli.html) and [Configuration](https://lightmime.pataar.nl/configuration.html).
+See the [CLI reference](https://lightmime.pataar.nl/docs/cli.html) and [Configuration](https://lightmime.pataar.nl/docs/configuration.html).
 
 ## Desktop integration
 
@@ -81,7 +81,7 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port
    2100, one datagram per frame.
 
-More in [How it works](https://lightmime.pataar.nl/how-it-works.html).
+More in [How it works](https://lightmime.pataar.nl/docs/how-it-works.html).
 
 ## Build your own frontend
 
@@ -104,7 +104,7 @@ use nothing else, so a GTK, Qt or web frontend can do the same.
 
 Pick HyperHDR if you drive LED strips, use an HDMI grabber or want HDR tone mapping; it does much more. lightmime does
 one thing, Hue sync from a Linux desktop, with as little setup and overhead as possible. More in
-[Compared with other tools](https://lightmime.pataar.nl/comparison.html).
+[Compared with other tools](https://lightmime.pataar.nl/docs/comparison.html).
 
 ## Contributing
 
