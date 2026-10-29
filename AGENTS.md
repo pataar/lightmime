@@ -1,7 +1,8 @@
 # AGENTS.md
 
 Guidance for coding agents working in this repository. User-facing docs are
-the mdbook in [docs/src/](docs/src) (published at https://lightmime.pataar.nl);
+the mdbook in [docs/src/](docs/src) (published at https://lightmime.pataar.nl/docs/,
+behind the landing page in [docs/site/](docs/site));
 [README.md](README.md) is the short version.
 
 ## What this is
@@ -42,7 +43,8 @@ crates/lightmime-gui/      window + tray; library called by `lightmime gui`, no 
 contrib/                   example config, systemd user unit, .desktop file (single source; Flatpak rewrites Icon=)
 assets/brand/              logo, wordmark, palette (README.md), export.sh → hicolor PNGs
 assets/icons/hicolor/      app icon `lightmime` (scalable + pixel-aligned 16/24 px drawings) and tray icon `lightmime-symbolic` (SVG)
-docs/                      mdbook site (book.toml, src/, theme/); Pages also hosts the Flatpak repo
+docs/                      Pages site: build.sh assembles site/ (landing page, CNAME, robots.txt) at /, the mdbook
+                           (book.toml, src/, theme/) at /docs/, a sitemap and redirects from old URLs; also the Flatpak repo
 packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bundle), flatpak-repo.sh (site repo), apt build deps
 .github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release),
                            dependabot-auto-merge.yml (non-major updates squash-merge once `check` passes)
@@ -146,6 +148,7 @@ cargo clippy -p lightmime --no-default-features -- -D warnings    # headless bui
 cargo fmt                                # rustfmt; run before committing
 cargo test -p lightmime-gui screenshots -- --ignored              # docs screenshots (GPU)
 mdbook serve docs                        # preview the docs
+docs/build.sh                            # whole site (landing + docs) into docs/book
 FLATPAK_BUILDER="flatpak run org.flatpak.Builder" \
   packaging/linux/flatpak.sh target/release/lightmime x86_64 target/lightmime.flatpak
 ```
@@ -186,5 +189,5 @@ secret is set).
   only where callers match on variants (`PairError`).
 - Logging via `tracing`; the binary honours `RUST_LOG`.
 - Comments explain why, not what. Keep doc comments on public items.
-- Keep docs/src, README.md and this file in sync when commands, config keys,
+- Keep docs/src, docs/site, README.md and this file in sync when commands, config keys,
   entities, the window or the crate layout change.

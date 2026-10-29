@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/pataar/lightmime/security/advisories/new
     about: Report security problems privately, not in a public issue.
   - name: Documentation
-    url: https://lightmime.pataar.nl/
+    url: https://lightmime.pataar.nl/docs/
     about: Install, pairing, tuning, Home Assistant and troubleshooting.
