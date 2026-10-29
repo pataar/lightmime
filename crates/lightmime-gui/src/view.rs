@@ -595,6 +595,7 @@ fn setting_row(
         .child(
             div()
                 .flex_1()
+                .min_w_0()
                 .flex()
                 .flex_col()
                 .child(div().text_sm().child(label))
