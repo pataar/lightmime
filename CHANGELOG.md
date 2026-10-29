@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/pataar/lightmime/compare/v0.2.0...v0.3.0) - 2026-10-29
+
+### Added
+
+- *(gui)* show version, author and project link in the window ([#14](https://github.com/pataar/lightmime/pull/14))
+- *(gui)* tint the window background with the screen's colours while syncing ([#17](https://github.com/pataar/lightmime/pull/17))
+- *(gui)* show the round trip to the bridge while syncing ([#15](https://github.com/pataar/lightmime/pull/15))
+
+### Other
+
+- move the book to /docs and add a landing page ([#18](https://github.com/pataar/lightmime/pull/18))
+- render the whole window in the screenshots and show them sharp ([#21](https://github.com/pataar/lightmime/pull/21))
+
 ## [0.2.0](https://github.com/pataar/lightmime/compare/v0.1.4...v0.2.0) - 2026-10-29
 
 ### Added
