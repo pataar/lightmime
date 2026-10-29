@@ -132,6 +132,9 @@ them as a public API.
 
 ## Commands
 
+`mise install` brings codegraph (run `codegraph init -y` once per clone; it
+re-indexes on its own after that); `.mcp.json` registers its MCP server.
+
 ```sh
 cargo build                              # debug build
 cargo test --all-features                # unit tests (colour mapping, hex parsing)

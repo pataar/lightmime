@@ -25,3 +25,7 @@ rustc-ice-*.txt
 
 # mdbook output
 /docs/book
+
+# per-clone tooling state
+/.codegraph/
+mise.lock
