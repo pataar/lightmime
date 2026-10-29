@@ -52,7 +52,8 @@ packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bu
 
 - `lightmime-core` stays frontend-agnostic: no MQTT, CLI or GUI code there.
   Frontends interact only through `Engine` (`spawn`, `start`, `stop`,
-  `set_bridge`, `status`/`subscribe`, `settings`/`subscribe_settings`/`update_settings`).
+  `set_bridge`, `status`/`subscribe`, `settings`/`subscribe_settings`/`update_settings`,
+  `subscribe_colors`; the window paints its background from the latter while syncing).
   `lightmime-gui` embeds `Engine` the same way the daemon does; with MQTT on,
   both share one engine in the `gui` process.
 - The engine is an actor on the tokio runtime; frame streaming runs on a
