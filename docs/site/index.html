@@ -292,6 +292,30 @@ footer a { color: var(--muted); }
 }
 .downscale .screen::before { content: "3440 × 1440"; left: 12px; top: 8px; }
 .downscale .frame::before { content: "64 × 36"; right: calc(100% + 12px); bottom: -4px; }
+/* The whole screen shrinks into the speck; 83.5% / 90.14% are the frame's top-left edge in screen percentages. */
+.downscale .screen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    background: var(--spectrum);
+    opacity: 0;
+    pointer-events: none;
+    animation: downscale 6s ease-in-out infinite;
+}
+.downscale .frame { animation: speck 6s ease-in-out infinite; }
+@keyframes downscale {
+    0%, 10% { inset: 0; opacity: 0; border-radius: 6px; }
+    25% { inset: 0; opacity: 0.35; border-radius: 6px; }
+    60% { inset: 83.5% 8% 14% 90.14%; opacity: 0.9; border-radius: 1px; }
+    66%, 100% { inset: 83.5% 8% 14% 90.14%; opacity: 0; border-radius: 1px; }
+}
+@keyframes speck {
+    64% { box-shadow: 0 0 0 6px color-mix(in srgb, #7c5cff 50%, transparent), 0 0 36px 6px #7c5cff; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .downscale .screen::after, .downscale .frame { animation: none; }
+}
 .downscale figcaption { flex: 1 1 260px; color: var(--muted); }
 .downscale figcaption b { color: var(--fg); }
 
