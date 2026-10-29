@@ -243,6 +243,7 @@ pub fn switch(
 ) -> Stateful<Div> {
     div()
         .id(id)
+        .flex_none()
         .w(px(36.))
         .h(px(20.))
         .p(px(2.))

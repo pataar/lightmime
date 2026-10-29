@@ -52,6 +52,8 @@ pub struct Status {
     pub state: EngineState,
     /// Frames actually sent per second.
     pub fps: f32,
+    /// Round trip to the bridge, measured once when the stream connects.
+    pub latency: Option<Duration>,
     /// Name of the entertainment area being streamed to.
     pub area: String,
     pub channels: usize,
@@ -358,6 +360,7 @@ impl Actor {
         self.status.send_modify(|s| {
             if state != EngineState::Streaming {
                 s.fps = 0.0;
+                s.latency = None;
             }
             s.state = state;
         });
@@ -395,8 +398,11 @@ impl StreamWorker {
             &self.area_id,
         )?;
         tracing::info!("streaming to the bridge");
-        self.status
-            .send_modify(|s| s.state = EngineState::Streaming);
+        let latency = stream.round_trip();
+        self.status.send_modify(|s| {
+            s.state = EngineState::Streaming;
+            s.latency = Some(latency);
+        });
 
         let mut sent = 0u32;
         let mut window = Instant::now();

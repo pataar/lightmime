@@ -289,10 +289,16 @@ impl MainView {
             EngineState::Error(_) => ("Stopped".to_owned(), theme.danger),
         };
         let detail = match &self.status.state {
-            EngineState::Streaming => format!(
-                "{} · {} lights · {:.0} fps",
-                self.status.area, self.status.channels, self.status.fps
-            ),
+            EngineState::Streaming => {
+                let mut detail = format!(
+                    "{} · {} lights · {:.0} fps",
+                    self.status.area, self.status.channels, self.status.fps
+                );
+                if let Some(latency) = self.status.latency {
+                    detail += &format!(" · ~{} ms", latency.as_millis().max(1));
+                }
+                detail
+            }
             EngineState::Starting => "Waiting for the screen and the bridge".into(),
             _ if !self.bridge.is_paired() => "Pair with a bridge to begin".into(),
             _ if self.bridge.entertainment_config_id.is_empty() => {
@@ -596,6 +602,7 @@ fn setting_row(
         .child(
             div()
                 .flex_1()
+                .min_w_0()
                 .flex()
                 .flex_col()
                 .child(div().text_sm().child(label))
@@ -643,6 +650,7 @@ impl Render for MainView {
             .when(paired, |this| this.child(self.render_areas(theme, cx)))
             .child(self.render_sliders(theme, cx))
             .child(self.render_general(theme, cx))
+            .child(render_about(theme))
             .into_any_element();
         div()
             .size_full()
@@ -727,6 +735,36 @@ fn heading(theme: Theme, text: &'static str) -> gpui::Div {
         .child(text.to_uppercase())
 }
 
+/// Version, author and links to the docs and the source, below the settings.
+fn render_about(theme: Theme) -> impl IntoElement {
+    div()
+        .flex()
+        .justify_center()
+        .gap_1()
+        .text_xs()
+        .text_color(theme.muted)
+        .child(concat!(
+            "lightmime ",
+            env!("CARGO_PKG_VERSION"),
+            " · ",
+            env!("CARGO_PKG_AUTHORS"),
+            " ·"
+        ))
+        .child(link(theme, "Docs", env!("CARGO_PKG_HOMEPAGE")))
+        .child("·")
+        .child(link(theme, "GitHub", env!("CARGO_PKG_REPOSITORY")))
+}
+
+fn link(theme: Theme, label: &'static str, url: &'static str) -> impl IntoElement {
+    div()
+        .id(label)
+        .text_color(theme.accent)
+        .cursor_pointer()
+        .hover(|style| style.underline())
+        .on_click(move |_, _, cx| cx.open_url(url))
+        .child(label)
+}
+
 fn section(theme: Theme, title: &'static str) -> gpui::Div {
     card(theme).child(heading(theme, title))
 }
@@ -761,6 +799,7 @@ impl MainView {
         self.status = Status {
             state: EngineState::Streaming,
             fps: 30.0,
+            latency: Some(std::time::Duration::from_millis(3)),
             area: "Living room".into(),
             channels: 6,
         };
