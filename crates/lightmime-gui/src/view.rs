@@ -282,10 +282,16 @@ impl MainView {
             EngineState::Error(_) => ("Stopped".to_owned(), theme.danger),
         };
         let detail = match &self.status.state {
-            EngineState::Streaming => format!(
-                "{} · {} lights · {:.0} fps",
-                self.status.area, self.status.channels, self.status.fps
-            ),
+            EngineState::Streaming => {
+                let mut detail = format!(
+                    "{} · {} lights · {:.0} fps",
+                    self.status.area, self.status.channels, self.status.fps
+                );
+                if let Some(latency) = self.status.latency {
+                    detail += &format!(" · ~{} ms", latency.as_millis().max(1));
+                }
+                detail
+            }
             EngineState::Starting => "Waiting for the screen and the bridge".into(),
             _ if !self.bridge.is_paired() => "Pair with a bridge to begin".into(),
             _ if self.bridge.entertainment_config_id.is_empty() => {
@@ -718,6 +724,7 @@ impl MainView {
         self.status = Status {
             state: EngineState::Streaming,
             fps: 30.0,
+            latency: Some(std::time::Duration::from_millis(3)),
             area: "Living room".into(),
             channels: 6,
         };
