@@ -7,11 +7,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 use gpui::{
-    AnyElement, Bounds, Context, Entity, FontWeight, Pixels, SharedString, Task, Window, div,
-    prelude::*, px,
+    AnyElement, Bounds, Context, Entity, FontWeight, Hsla, Pixels, Rgba, SharedString, Task,
+    Window, div, linear_color_stop, linear_gradient, prelude::*, px,
 };
+use lightmime_core::color::Zone;
 use lightmime_core::config::{MAX_SATURATION, MAX_SMOOTHING};
-use lightmime_core::hue::{self, Bridge, DiscoveredBridge};
+use lightmime_core::hue::{self, Bridge, ChannelColor, DiscoveredBridge};
 use lightmime_core::{BridgeConfig, EngineState, Status, SyncSettings};
 
 use crate::Shared;
@@ -87,6 +88,8 @@ pub struct MainView {
     slider_bounds: [Rc<Cell<Bounds<Pixels>>>; 3],
     save_settings: Option<Task<()>>,
     drag: Drag,
+    /// Left and right of the screen while syncing, painted behind the cards.
+    screen: Option<[Hsla; 2]>,
     _watchers: Vec<Task<()>>,
 }
 
@@ -103,6 +106,9 @@ impl MainView {
         let settings_watcher = watch(shared.engine.subscribe_settings(), cx, |this, s| {
             this.settings = s
         });
+        let colors_watcher = watch(shared.engine.subscribe_colors(), cx, |this, colors| {
+            this.screen = screen_edges(&colors)
+        });
 
         let mut view = Self {
             status: shared.engine.status(),
@@ -115,9 +121,10 @@ impl MainView {
             autostart: autostart::current(),
             notice: None,
             drag: Drag::default(),
+            screen: None,
             slider_bounds: Default::default(),
             save_settings: None,
-            _watchers: vec![status_watcher, settings_watcher],
+            _watchers: vec![status_watcher, settings_watcher, colors_watcher],
             shared,
         };
         if view.bridge.is_paired() {
@@ -605,7 +612,14 @@ impl Render for MainView {
             .id("main")
             .size_full()
             .overflow_y_scroll()
-            .bg(theme.bg)
+            .map(|this| match self.screen {
+                Some([left, right]) => this.bg(linear_gradient(
+                    90.,
+                    linear_color_stop(left, 0.),
+                    linear_color_stop(right, 1.),
+                )),
+                None => this.bg(theme.bg),
+            })
             .text_color(theme.text)
             .p_4()
             .flex()
@@ -632,6 +646,7 @@ impl Render for MainView {
             .into_any_element();
         div()
             .size_full()
+            .bg(theme.bg)
             .font_family(cx.global::<UiFont>().0.clone())
             .text_color(theme.text)
             .child(decorations::frame(
@@ -641,6 +656,34 @@ impl Render for MainView {
                 &self.drag,
                 content,
             ))
+    }
+}
+
+/// Average colour of the lights on the left and right half of the screen, half transparent
+/// so the theme's background tones it down.
+fn screen_edges(colors: &[(Zone, ChannelColor)]) -> Option<[Hsla; 2]> {
+    let side = |left: bool| {
+        let lights: Vec<_> = colors
+            .iter()
+            .filter(|(zone, _)| (zone.x < 0.5) == left)
+            .collect();
+        if lights.is_empty() {
+            return None;
+        }
+        let total = lights.len() as f32 * f32::from(u16::MAX);
+        let channel =
+            |i: usize| lights.iter().map(|(_, c)| f32::from(c.rgb[i])).sum::<f32>() / total;
+        Some(Hsla::from(Rgba {
+            r: channel(0),
+            g: channel(1),
+            b: channel(2),
+            a: 0.5,
+        }))
+    };
+    match (side(true), side(false)) {
+        (Some(left), Some(right)) => Some([left, right]),
+        (Some(only), None) | (None, Some(only)) => Some([only, only]),
+        (None, None) => None,
     }
 }
 
@@ -721,5 +764,54 @@ impl MainView {
             area: "Living room".into(),
             channels: 6,
         };
+        self.screen = screen_edges(&[
+            tests::light(0.0, [u16::MAX, 20_000, 0]),
+            tests::light(1.0, [0, 30_000, u16::MAX]),
+        ]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    pub(super) fn light(x: f32, rgb: [u16; 3]) -> (Zone, ChannelColor) {
+        (
+            Zone {
+                channel_id: 0,
+                x,
+                y: 0.5,
+            },
+            ChannelColor { channel_id: 0, rgb },
+        )
+    }
+
+    #[test]
+    fn screen_edges_average_each_half() {
+        assert!(screen_edges(&[]).is_none());
+        let [left, right] = screen_edges(&[
+            light(0.0, [u16::MAX, 0, 0]),
+            light(0.2, [0, 0, 0]),
+            light(0.9, [0, 0, u16::MAX]),
+        ])
+        .unwrap();
+        assert_eq!(
+            Rgba::from(left),
+            Rgba {
+                r: 0.5,
+                g: 0.,
+                b: 0.,
+                a: 0.5
+            }
+        );
+        assert_eq!(
+            Rgba::from(right),
+            Rgba {
+                r: 0.,
+                g: 0.,
+                b: 1.,
+                a: 0.5
+            }
+        );
     }
 }

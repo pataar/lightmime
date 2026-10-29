@@ -71,6 +71,7 @@ pub struct Engine {
     commands: mpsc::UnboundedSender<Command>,
     status: watch::Receiver<Status>,
     settings: Arc<watch::Sender<SyncSettings>>,
+    colors: watch::Receiver<Vec<(Zone, ChannelColor)>>,
 }
 
 impl Engine {
@@ -81,11 +82,13 @@ impl Engine {
         let (commands, command_rx) = mpsc::unbounded_channel();
         let (status_tx, status) = watch::channel(Status::default());
         let settings = Arc::new(watch::Sender::new(config.sync.clone().sanitized()));
+        let (colors_tx, colors) = watch::channel(Vec::new());
         let actor = Actor {
             config,
             restore_token_path,
             settings: settings.subscribe(),
             status: Arc::new(status_tx),
+            colors: Arc::new(colors_tx),
             commands: commands.clone(),
             session: None,
             sessions_opened: 0,
@@ -95,6 +98,7 @@ impl Engine {
             commands,
             status,
             settings,
+            colors,
         }
     }
 
@@ -130,6 +134,12 @@ impl Engine {
         self.settings.subscribe()
     }
 
+    /// Watch the colours sent to the lights, with where on the screen each one comes from.
+    /// Empty while not streaming.
+    pub fn subscribe_colors(&self) -> watch::Receiver<Vec<(Zone, ChannelColor)>> {
+        self.colors.clone()
+    }
+
     /// Change settings; takes effect on the next frame.
     pub fn update_settings(&self, update: impl FnOnce(&mut SyncSettings)) {
         self.settings.send_if_modified(|settings| {
@@ -148,6 +158,7 @@ struct Actor {
     restore_token_path: Option<PathBuf>,
     settings: watch::Receiver<SyncSettings>,
     status: Arc<watch::Sender<Status>>,
+    colors: Arc<watch::Sender<Vec<(Zone, ChannelColor)>>>,
     commands: mpsc::UnboundedSender<Command>,
     session: Option<Session>,
     sessions_opened: u64,
@@ -295,6 +306,7 @@ impl Actor {
             room,
             settings: self.settings.clone(),
             status: self.status.clone(),
+            colors: self.colors.clone(),
             stop: stop.clone(),
         };
         self.sessions_opened += 1;
@@ -364,11 +376,18 @@ struct StreamWorker {
     room: Vec<ChannelColor>,
     settings: watch::Receiver<SyncSettings>,
     status: Arc<watch::Sender<Status>>,
+    colors: Arc<watch::Sender<Vec<(Zone, ChannelColor)>>>,
     stop: Arc<AtomicBool>,
 }
 
 impl StreamWorker {
     fn run(mut self) -> Result<()> {
+        let result = self.stream();
+        self.colors.send_replace(Vec::new());
+        result
+    }
+
+    fn stream(&mut self) -> Result<()> {
         let mut stream = EntertainmentStream::connect(
             &self.host,
             &self.identity,
@@ -397,6 +416,7 @@ impl StreamWorker {
                 None => self.room.clone(),
             };
             stream.send(&colors)?;
+            self.publish(&colors);
             sent += 1;
 
             let elapsed = window.elapsed();
@@ -416,16 +436,19 @@ impl StreamWorker {
 
         let stopping = Instant::now();
         while stopping.elapsed() < FADE {
-            stream.send(&wipe(
-                &colors,
-                &self.room,
-                self.mapper.zones(),
-                stopping.elapsed(),
-            ))?;
+            let fading = wipe(&colors, &self.room, self.mapper.zones(), stopping.elapsed());
+            stream.send(&fading)?;
+            self.publish(&fading);
             std::thread::sleep(Duration::from_millis(20));
         }
         stream.close();
         Ok(())
+    }
+
+    fn publish(&self, colors: &[ChannelColor]) {
+        let zones = self.mapper.zones().iter().copied();
+        self.colors
+            .send_replace(zones.zip(colors.iter().copied()).collect());
     }
 }
 
