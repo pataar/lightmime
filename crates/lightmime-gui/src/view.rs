@@ -685,9 +685,8 @@ fn heading(theme: Theme, text: &'static str) -> gpui::Div {
         .child(text.to_uppercase())
 }
 
-/// Version, author and a link to the project, below the settings.
+/// Version, author and links to the docs and the source, below the settings.
 fn render_about(theme: Theme) -> impl IntoElement {
-    const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
     div()
         .flex()
         .justify_center()
@@ -701,15 +700,19 @@ fn render_about(theme: Theme) -> impl IntoElement {
             env!("CARGO_PKG_AUTHORS"),
             " ·"
         ))
-        .child(
-            div()
-                .id("project-link")
-                .text_color(theme.accent)
-                .cursor_pointer()
-                .hover(|style| style.underline())
-                .on_click(|_, _, cx| cx.open_url(REPOSITORY))
-                .child(REPOSITORY.trim_start_matches("https://")),
-        )
+        .child(link(theme, "Docs", env!("CARGO_PKG_HOMEPAGE")))
+        .child("·")
+        .child(link(theme, "GitHub", env!("CARGO_PKG_REPOSITORY")))
+}
+
+fn link(theme: Theme, label: &'static str, url: &'static str) -> impl IntoElement {
+    div()
+        .id(label)
+        .text_color(theme.accent)
+        .cursor_pointer()
+        .hover(|style| style.underline())
+        .on_click(move |_, _, cx| cx.open_url(url))
+        .child(label)
 }
 
 fn section(theme: Theme, title: &'static str) -> gpui::Div {
