@@ -2,6 +2,7 @@
 
 | Channel | How |
 |---|---|
+| AUR (Arch, Omarchy) | `yay -S lightmime-bin`, see [below](#aur) |
 | Flatpak repository | `flatpak install --user lightmime io.github.pataar.lightmime` after adding the remote, see [below](#flatpak) |
 | Flatpak bundle | `lightmime-<arch>.flatpak` from the [latest release](https://github.com/pataar/lightmime/releases/latest) |
 | Binary | `lightmime-<arch>-unknown-linux-gnu.tar.xz` from the [latest release](https://github.com/pataar/lightmime/releases/latest), see [below](#binary) |
@@ -37,6 +38,20 @@ A single release can also be installed from its bundle, without the repository. 
 ```sh
 flatpak install --user lightmime-x86_64.flatpak
 ```
+
+## AUR
+
+On Arch and Arch-based systems such as Omarchy, CachyOS and Manjaro, `lightmime-bin` in the AUR packages the release
+binary with the launcher entry, icons and the [systemd user unit](background.md#as-a-systemd-user-service). Install
+it with your AUR helper:
+
+```sh
+yay -S lightmime-bin
+```
+
+It updates with the rest of the system. Install the screen-cast portal backend for your desktop too, for example
+`xdg-desktop-portal-hyprland` on Hyprland (Omarchy has it). See [Hyprland and Omarchy](hyprland.md) for a keybinding,
+a Waybar module and a window rule.
 
 ## Binary
 
@@ -99,6 +114,7 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
 
 ```sh
 flatpak uninstall --user io.github.pataar.lightmime   # Flatpak; add --delete-data to remove its config
+sudo pacman -R lightmime-bin                          # AUR
 rm ~/.local/bin/lightmime                             # binary or source install
 ```
 

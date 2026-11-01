@@ -34,6 +34,10 @@ show it. Stock GNOME does not: install the
 [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/)
 extension (Ubuntu ships it). Without a tray, closing the window quits lightmime.
 
+Starting lightmime again while it runs, from the app launcher for instance, brings the running window forward rather
+than opening a second copy. `lightmime show`, `toggle` and `status` reach the running app from a terminal, a
+keybinding or a status bar: see [Hyprland and Omarchy](hyprland.md).
+
 ## Options
 
 ```sh

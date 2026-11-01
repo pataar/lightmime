@@ -17,7 +17,8 @@ Open the [window and tray icon](gui.md). Runs the [Home Assistant](home-assistan
 | `--hidden` | Start in the tray without opening the window. Ignored when there is no tray. |
 | `--start` | Start syncing right away. |
 
-Not available in a build without the `gui` feature.
+When lightmime is already running, this opens that one's window (and starts syncing with `--start`) instead of
+starting a second copy. Not available in a build without the `gui` feature.
 
 ## `lightmime run`
 
@@ -26,6 +27,8 @@ Not available in a build without the `gui` feature.
 | Option | |
 |---|---|
 | `--start` | Start syncing right away instead of waiting for Home Assistant. |
+
+Exits with an error when lightmime is already running.
 
 ## `lightmime pair --host <address>`
 
@@ -52,3 +55,22 @@ Run a colour sweep over the area's lights without capturing the screen, to [chec
 | Option | |
 |---|---|
 | `--seconds <n>` | How long to run; default 8. |
+
+## Controlling a running lightmime
+
+These talk to the lightmime that is running, as `lightmime gui` or `lightmime run`, over the session bus. They need no
+config file and fail with an error when lightmime is not running. They are meant for keybindings and status bars; see
+[Hyprland and Omarchy](hyprland.md) for examples and the D-Bus interface behind them.
+
+| Command | |
+|---|---|
+| `lightmime start` | Start syncing. |
+| `lightmime stop` | Stop syncing and release the area. |
+| `lightmime toggle` | Stop when syncing or starting, start otherwise. |
+| `lightmime show` | Open the window, or bring it to the front. Fails under `lightmime run`. |
+| `lightmime status` | Print the state in a sentence; `lightmime is not running` (and success) when it is not. |
+
+| `status` option | |
+|---|---|
+| `--waybar` | Print a line of JSON for a [Waybar custom module](hyprland.md#waybar-module) instead. |
+| `--follow` | Keep running and print again on every change, also while lightmime is not running. |

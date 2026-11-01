@@ -19,6 +19,9 @@ For a tray icon at login rather than a headless service, use **Start at login** 
 The unit in [`contrib/lightmime.service`](https://github.com/pataar/lightmime/blob/main/contrib/lightmime.service)
 starts with your graphical session and restarts after a failure.
 
+The [AUR package](install.md#aur) installs it already; enable it with
+`systemctl --user enable --now lightmime`.
+
 For a binary or source install in `~/.local/bin`:
 
 ```sh
@@ -50,4 +53,6 @@ Run `lightmime run --start` once by hand first, so you can answer the screen pic
 Follow the log with `journalctl --user -u lightmime -f`. Set `Environment=RUST_LOG=debug` in the `[Service]` section
 for more detail.
 
-Run either the service or the window, not both: only one of them can stream to the area.
+Run either the service or the window, not both: only one of them can stream to the area. lightmime enforces this: while
+the service runs, `lightmime gui` exits with an error instead of starting a second copy. Start, stop and check the service from a script or a
+keybinding with `lightmime start`, `stop`, `toggle` and `status` (see the [CLI reference](cli.md#controlling-a-running-lightmime)).

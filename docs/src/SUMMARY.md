@@ -8,6 +8,7 @@
 - [Window and tray](gui.md)
 - [Tuning](tuning.md)
 - [Running in the background](background.md)
+- [Hyprland and Omarchy](hyprland.md)
 - [Home Assistant](home-assistant.md)
 - [Configuration](configuration.md)
 - [CLI reference](cli.md)
