@@ -1,3 +1,4 @@
+mod control;
 mod mqtt;
 mod settings;
 
@@ -50,6 +51,7 @@ enum Command {
         start: bool,
     },
     /// Open the window and tray icon. Runs the MQTT bridge too when enabled.
+    /// When lightmime is already running, brings its window forward instead.
     #[cfg(feature = "gui")]
     Gui {
         /// Start in the tray without opening the window.
@@ -58,6 +60,23 @@ enum Command {
         /// Start syncing immediately.
         #[arg(long)]
         start: bool,
+    },
+    /// Tell the running lightmime (`gui` or `run`) to start syncing.
+    Start,
+    /// Tell the running lightmime to stop syncing.
+    Stop,
+    /// Start syncing when stopped, stop when syncing: for a keybinding.
+    Toggle,
+    /// Open the running lightmime's window.
+    Show,
+    /// Show whether the running lightmime is syncing.
+    Status {
+        /// Print a JSON line for a Waybar custom module.
+        #[arg(long)]
+        waybar: bool,
+        /// Keep running and print again on every change.
+        #[arg(long)]
+        follow: bool,
     },
 }
 
@@ -70,6 +89,29 @@ async fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
+    // Remote control needs no config file, so it works before pairing too.
+    let request = match &cli.command {
+        Command::Start => Some(control::Request::Start),
+        Command::Stop => Some(control::Request::Stop),
+        Command::Toggle => Some(control::Request::Toggle),
+        Command::Show => Some(control::Request::Show),
+        Command::Status { waybar, follow } => {
+            let waybar = *waybar;
+            return control::status(*follow, move |snapshot| {
+                if waybar {
+                    println!("{}", snapshot.waybar());
+                } else {
+                    println!("{}", snapshot.summary());
+                }
+            })
+            .await;
+        }
+        _ => None,
+    };
+    if let Some(request) = request {
+        return control::send(request).await;
+    }
+
     let config_path = cli.config.unwrap_or_else(settings::default_config_path);
     let mut config = AppConfig::load(&config_path)?;
 
@@ -83,6 +125,13 @@ async fn main() -> Result<()> {
         #[cfg(feature = "gui")]
         Command::Gui { hidden, start } => {
             run(config, config_path, start, Frontend::Gui { hidden }).await
+        }
+        Command::Start
+        | Command::Stop
+        | Command::Toggle
+        | Command::Show
+        | Command::Status { .. } => {
+            unreachable!("handled above")
         }
     }
 }
@@ -255,6 +304,19 @@ async fn run(
     frontend: Frontend,
 ) -> Result<()> {
     let engine = Engine::spawn(config.core.clone(), Some(settings::restore_token_path()));
+    #[cfg(feature = "gui")]
+    let (show_tx, show_rx) = tokio::sync::mpsc::unbounded_channel();
+    let show = match frontend {
+        Frontend::Headless => None,
+        #[cfg(feature = "gui")]
+        Frontend::Gui { .. } => Some(show_tx),
+    };
+    // Held until the end of `run`: dropping it releases the name.
+    let _bus = match control::claim(engine.clone(), show).await {
+        control::Claim::Owned(conn) => Some(conn),
+        control::Claim::NoBus => None,
+        control::Claim::Taken => return already_running(start, &frontend).await,
+    };
 
     let mut status = engine.subscribe();
     tokio::spawn(async move {
@@ -304,6 +366,7 @@ async fn run(
                 runtime: tokio::runtime::Handle::current(),
                 device_name: device_name(),
                 hidden,
+                show_requests: show_rx,
                 quit_signal: Box::pin(shutdown_signal()),
             };
             // gpui owns this thread until the app quits.
@@ -324,6 +387,28 @@ async fn run(
         let _ = tokio::time::timeout(Duration::from_secs(3), task).await;
     }
     Ok(())
+}
+
+/// Another lightmime owns the bus name. Starting a second one would fight it
+/// for the entertainment area, so hand the request to the running one.
+#[cfg_attr(not(feature = "gui"), allow(unused_variables))]
+async fn already_running(start: bool, frontend: &Frontend) -> Result<()> {
+    match frontend {
+        Frontend::Headless => bail!(
+            "lightmime is already running; control it with `lightmime start`, `stop` or `toggle`"
+        ),
+        #[cfg(feature = "gui")]
+        Frontend::Gui { hidden } => {
+            if start {
+                control::send(control::Request::Start).await?;
+            }
+            if !hidden {
+                control::send(control::Request::Show).await?;
+            }
+            tracing::info!("lightmime is already running; handed over to it");
+            Ok(())
+        }
+    }
 }
 
 async fn shutdown_signal() {

@@ -43,6 +43,9 @@ pub struct Options {
     /// Start in the tray without opening the window. Ignored when there is no
     /// tray to reopen it from.
     pub hidden: bool,
+    /// Each message opens the window or brings it to the front, as the
+    /// tray's Show does; for `lightmime show` and a second `lightmime gui`.
+    pub show_requests: tokio::sync::mpsc::UnboundedReceiver<()>,
     /// Quits the app when it completes, as the tray's Quit does; for SIGTERM.
     pub quit_signal: Pin<Box<dyn Future<Output = ()> + Send>>,
 }
@@ -76,6 +79,7 @@ pub fn run(options: Options) {
         runtime,
         device_name,
         hidden,
+        mut show_requests,
         quit_signal,
     } = options;
     let shared = Shared {
@@ -87,6 +91,14 @@ pub fn run(options: Options) {
     };
 
     let (actions_tx, mut actions) = tokio::sync::mpsc::unbounded_channel();
+    let show = actions_tx.clone();
+    runtime.spawn(async move {
+        while show_requests.recv().await.is_some() {
+            if show.send(tray::Action::Show).is_err() {
+                break;
+            }
+        }
+    });
     let quit = actions_tx.clone();
     runtime.spawn(async move {
         quit_signal.await;

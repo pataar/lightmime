@@ -3335,6 +3335,7 @@ dependencies = [
  "anyhow",
  "clap",
  "dirs 7.0.0",
+ "futures-util",
  "hostname",
  "lightmime-core",
  "lightmime-gui",
@@ -3347,6 +3348,7 @@ dependencies = [
  "toml_edit 0.25.17+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
+ "zbus",
 ]
 
 [[package]]
