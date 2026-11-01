@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use gpui::{
-    AnyElement, Bounds, Context, Entity, FontWeight, Hsla, Pixels, Rgba, SharedString, Task,
-    Window, div, linear_color_stop, linear_gradient, prelude::*, px,
+    AnyElement, Bounds, BoxShadow, Context, Entity, FontWeight, Hsla, Pixels, Rgba, SharedString,
+    Task, Window, div, hsla, linear_color_stop, linear_gradient, prelude::*, px, relative, rgb,
 };
 use lightmime_core::color::Zone;
 use lightmime_core::config::{MAX_SATURATION, MAX_SMOOTHING};
@@ -88,8 +88,8 @@ pub struct MainView {
     slider_bounds: [Rc<Cell<Bounds<Pixels>>>; 3],
     save_settings: Option<Task<()>>,
     drag: Drag,
-    /// Left and right of the screen while syncing, painted behind the cards.
-    screen: Option<[Hsla; 2]>,
+    /// What each light shows and where on the screen it samples; empty while not syncing.
+    colors: Vec<(Zone, ChannelColor)>,
     _watchers: Vec<Task<()>>,
 }
 
@@ -107,7 +107,7 @@ impl MainView {
             this.settings = s
         });
         let colors_watcher = watch(shared.engine.subscribe_colors(), cx, |this, colors| {
-            this.screen = screen_edges(&colors)
+            this.colors = colors
         });
 
         let mut view = Self {
@@ -121,7 +121,7 @@ impl MainView {
             autostart: autostart::current(),
             notice: None,
             drag: Drag::default(),
-            screen: None,
+            colors: Vec::new(),
             slider_bounds: Default::default(),
             save_settings: None,
             _watchers: vec![status_watcher, settings_watcher, colors_watcher],
@@ -309,7 +309,10 @@ impl MainView {
         let can_start = self.bridge.is_paired() && !self.bridge.entertainment_config_id.is_empty();
         let syncing = self.status.state.is_active();
 
-        card(theme)
+        let body = div()
+            .flex()
+            .flex_col()
+            .gap_3()
             .child(
                 div()
                     .flex()
@@ -358,7 +361,17 @@ impl MainView {
                         .text_color(theme.danger)
                         .child(message.to_owned()),
                 )
-            })
+            });
+
+        if self.colors.is_empty() {
+            card(theme).child(body)
+        } else {
+            card(theme)
+                .p_1()
+                .gap_0()
+                .child(room_map(&self.colors))
+                .child(body.p_3())
+        }
     }
 
     fn render_bridge(&self, theme: Theme, cx: &mut Context<Self>) -> AnyElement {
@@ -619,11 +632,12 @@ impl Render for MainView {
             .id("main")
             .size_full()
             .overflow_y_scroll()
-            .map(|this| match self.screen {
+            .map(|this| match screen_edges(&self.colors) {
+                // Half transparent, so the theme's background tones it down.
                 Some([left, right]) => this.bg(linear_gradient(
                     90.,
-                    linear_color_stop(left, 0.),
-                    linear_color_stop(right, 1.),
+                    linear_color_stop(left.opacity(0.5), 0.),
+                    linear_color_stop(right.opacity(0.5), 1.),
                 )),
                 None => this.bg(theme.bg),
             })
@@ -667,8 +681,7 @@ impl Render for MainView {
     }
 }
 
-/// Average colour of the lights on the left and right half of the screen, half transparent
-/// so the theme's background tones it down.
+/// Average colour of the lights on the left and right half of the screen.
 fn screen_edges(colors: &[(Zone, ChannelColor)]) -> Option<[Hsla; 2]> {
     let side = |left: bool| {
         let lights: Vec<_> = colors
@@ -685,7 +698,7 @@ fn screen_edges(colors: &[(Zone, ChannelColor)]) -> Option<[Hsla; 2]> {
             r: channel(0),
             g: channel(1),
             b: channel(2),
-            a: 0.5,
+            a: 1.0,
         }))
     };
     match (side(true), side(false)) {
@@ -725,6 +738,93 @@ fn card(theme: Theme) -> gpui::Div {
         .border_1()
         .border_color(theme.border)
         .bg(theme.surface)
+}
+
+/// The screen in a dark room, with each light as a dot where it samples the screen and the
+/// glow it throws on the wall behind.
+fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
+    const SCREEN: (f32, f32) = (192., 108.);
+    const DOT: f32 = 10.;
+    const GLOW: f32 = 24.;
+    let over_screen = || {
+        div()
+            .absolute()
+            .left(relative(0.5))
+            .top(relative(0.5))
+            .ml(px(-SCREEN.0 / 2.))
+            .mt(px(-SCREEN.1 / 2.))
+            .w(px(SCREEN.0))
+            .h(px(SCREEN.1))
+    };
+    // Each glow sits pushed outward from the screen's centre, on the wall where the lamp shines.
+    let glows = colors.iter().map(|(zone, color)| {
+        div()
+            .absolute()
+            .left(relative(zone.x))
+            .top(relative(zone.y))
+            .ml(px(-GLOW / 2. + (zone.x - 0.5) * 60.))
+            .mt(px(-GLOW / 2. + (zone.y - 0.5) * 40.))
+            .size(px(GLOW))
+            .rounded_full()
+            .shadow(vec![
+                BoxShadow::new(px(0.), px(0.), light_colour(color).opacity(0.5))
+                    .blur_radius(px(48.))
+                    .spread_radius(px(28.)),
+            ])
+    });
+    let dots = colors.iter().map(|(zone, color)| {
+        div()
+            .absolute()
+            .left(relative(zone.x))
+            .top(relative(zone.y))
+            .ml(px(-DOT / 2.))
+            .mt(px(-DOT / 2.))
+            .size(px(DOT))
+            .rounded_full()
+            .border_2()
+            .border_color(hsla(0., 0., 0., 0.6))
+            .bg(light_colour(color))
+    });
+    let picture = screen_edges(colors).map(|[left, right]| {
+        linear_gradient(
+            90.,
+            linear_color_stop(left, 0.),
+            linear_color_stop(right, 1.),
+        )
+    });
+
+    // The brand's Night: the room is dark in both appearances.
+    div()
+        .relative()
+        .h(px(168.))
+        .rounded_md()
+        .overflow_hidden()
+        .bg(rgb(0x0c0d18))
+        .child(over_screen().children(glows))
+        .child(
+            over_screen()
+                .p(px(3.))
+                .rounded(px(4.))
+                .bg(hsla(0., 0., 0., 1.))
+                .child(
+                    div()
+                        .size_full()
+                        .rounded(px(2.))
+                        .when_some(picture, |this, picture| this.bg(picture))
+                        .opacity(0.7),
+                ),
+        )
+        .child(over_screen().children(dots))
+}
+
+fn light_colour(color: &ChannelColor) -> Hsla {
+    let channel = |i: usize| f32::from(color.rgb[i]) / f32::from(u16::MAX);
+    Hsla::from(Rgba {
+        r: channel(0),
+        g: channel(1),
+        b: channel(2),
+        a: 1.0,
+    })
 }
 
 fn heading(theme: Theme, text: &'static str) -> gpui::Div {
@@ -803,10 +903,15 @@ impl MainView {
             area: "Living room".into(),
             channels: 6,
         };
-        self.screen = screen_edges(&[
-            tests::light(0.0, [u16::MAX, 20_000, 0]),
-            tests::light(1.0, [0, 30_000, u16::MAX]),
-        ]);
+        // Six lights around a film still: warm on the left, cool on the right.
+        self.colors = vec![
+            tests::light(0.0, 0.2, [65_535, 30_000, 8_000]),
+            tests::light(0.0, 0.75, [65_535, 22_000, 4_000]),
+            tests::light(0.35, 0.0, [61_000, 12_000, 40_000]),
+            tests::light(0.7, 0.0, [36_000, 24_000, 65_535]),
+            tests::light(1.0, 0.3, [8_000, 50_000, 60_000]),
+            tests::light(1.0, 0.8, [10_000, 44_000, 58_000]),
+        ];
     }
 }
 
@@ -814,12 +919,12 @@ impl MainView {
 mod tests {
     use super::*;
 
-    pub(super) fn light(x: f32, rgb: [u16; 3]) -> (Zone, ChannelColor) {
+    pub(super) fn light(x: f32, y: f32, rgb: [u16; 3]) -> (Zone, ChannelColor) {
         (
             Zone {
                 channel_id: 0,
                 x,
-                y: 0.5,
+                y,
             },
             ChannelColor { channel_id: 0, rgb },
         )
@@ -829,9 +934,9 @@ mod tests {
     fn screen_edges_average_each_half() {
         assert!(screen_edges(&[]).is_none());
         let [left, right] = screen_edges(&[
-            light(0.0, [u16::MAX, 0, 0]),
-            light(0.2, [0, 0, 0]),
-            light(0.9, [0, 0, u16::MAX]),
+            light(0.0, 0.5, [u16::MAX, 0, 0]),
+            light(0.2, 0.5, [0, 0, 0]),
+            light(0.9, 0.5, [0, 0, u16::MAX]),
         ])
         .unwrap();
         assert_eq!(
@@ -840,7 +945,7 @@ mod tests {
                 r: 0.5,
                 g: 0.,
                 b: 0.,
-                a: 0.5
+                a: 1.
             }
         );
         assert_eq!(
@@ -849,7 +954,7 @@ mod tests {
                 r: 0.,
                 g: 0.,
                 b: 1.,
-                a: 0.5
+                a: 1.
             }
         );
     }
