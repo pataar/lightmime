@@ -2,7 +2,7 @@
 
 | Channel | How |
 |---|---|
-| Flatpak repository | `flatpak install --user lightmime io.github.pataar.lightmime` after adding the remote, see [below](#flatpak) |
+| Flatpak repository | `flatpak install --user https://lightmime.pataar.nl/flatpak/lightmime.flatpakref`, see [below](#flatpak) |
 | Flatpak bundle | `lightmime-<arch>.flatpak` from the [latest release](https://github.com/pataar/lightmime/releases/latest) |
 | Binary | `lightmime-<arch>-unknown-linux-gnu.tar.xz` from the [latest release](https://github.com/pataar/lightmime/releases/latest), see [below](#binary) |
 | crates.io | `cargo install --locked lightmime`, see [below](#from-source) |
@@ -13,7 +13,15 @@ Releases are built for x86_64 and aarch64.
 ## Flatpak
 
 lightmime has its own Flatpak repository, so it installs as a desktop app and `flatpak update` (or your software
-centre) brings each new release. The Freedesktop runtime it needs comes from Flathub:
+centre) brings each new release. The Freedesktop runtime it needs comes from Flathub. One command adds the
+repository and installs lightmime:
+
+```sh
+flatpak install --user https://lightmime.pataar.nl/flatpak/lightmime.flatpakref
+```
+
+Opening [lightmime.flatpakref](https://lightmime.pataar.nl/flatpak/lightmime.flatpakref) with GNOME Software or
+Discover does the same. To add the repository by hand instead:
 
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo

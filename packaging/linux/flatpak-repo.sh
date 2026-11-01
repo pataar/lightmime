@@ -2,7 +2,8 @@
 # Add lightmime's Flatpak repository to the docs site, so `flatpak update` brings new releases.
 #
 # Usage: packaging/linux/flatpak-repo.sh SITE
-#   SITE is the built site (docs/book); this writes SITE/flatpak/repo and SITE/flatpak/lightmime.flatpakrepo. Every
+#   SITE is the built site (docs/book); this writes SITE/flatpak/repo, SITE/flatpak/lightmime.flatpakrepo and
+#   SITE/flatpak/lightmime.flatpakref. Every
 #   Pages deploy replaces the whole site, so the repository is mirrored from the live site first, then the latest
 #   release's bundles are imported into it. Needs flatpak, ostree, curl and gh (with GH_TOKEN and GITHUB_REPOSITORY);
 #   $SITE_URL is the site's address. Before the first release with bundles, it writes nothing. A failure to read the
@@ -96,6 +97,20 @@ Title=lightmime
 Comment=lightmime releases
 Url=$base_url/flatpak/repo/
 Homepage=$base_url/
+$gpg_key_line
+EOF
+# One file to install from: `flatpak install` or a software centre adds the remote under the suggested name, so
+# updates keep coming from it, and fetches the runtime from Flathub.
+cat >"$site/flatpak/lightmime.flatpakref" <<EOF
+[Flatpak Ref]
+Name=$app_id
+Branch=stable
+Title=lightmime
+Url=$base_url/flatpak/repo/
+SuggestRemoteName=lightmime
+Homepage=$base_url/
+RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false
 $gpg_key_line
 EOF
 echo "$app_id: $(ostree --repo="$repo" refs | tr '\n' ' ')"
