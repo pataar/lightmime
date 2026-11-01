@@ -1,0 +1,63 @@
+# Maintainer: Pieter Willekens <3403851+pataar@users.noreply.github.com>
+#
+# The AUR package `lightmime-bin`, from the release binaries. release.yml copies this file to the AUR on every release
+# (packaging/aur/update.sh sets pkgver and the checksums); edit it here, not on the AUR.
+pkgname=lightmime-bin
+pkgver=0.3.0
+pkgrel=1
+pkgdesc='Sync Philips Hue lights with your screen'
+arch=(x86_64 aarch64)
+url='https://lightmime.pataar.nl'
+license=('MIT OR Apache-2.0')
+depends=(
+  gcc-libs
+  glibc
+  gst-plugin-pipewire
+  gst-plugins-base-libs
+  gstreamer
+  libxcb
+  libxkbcommon
+  libxkbcommon-x11
+  openssl
+  vulkan-icd-loader
+  wayland
+  xdg-desktop-portal
+)
+optdepends=(
+  'xdg-desktop-portal-hyprland: screen capture on Hyprland'
+  'xdg-desktop-portal-wlr: screen capture on Sway and other wlroots compositors'
+  'xdg-desktop-portal-kde: screen capture on KDE Plasma'
+  'xdg-desktop-portal-gnome: screen capture on GNOME'
+)
+provides=(lightmime)
+conflicts=(lightmime)
+_repo=https://github.com/pataar/lightmime
+# The binary from the release; the icons from the tagged source, as the release tarball has none.
+source=("lightmime-$pkgver-src.tar.gz::$_repo/archive/refs/tags/v$pkgver.tar.gz")
+source_x86_64=("$_repo/releases/download/v$pkgver/lightmime-x86_64-unknown-linux-gnu.tar.xz")
+source_aarch64=("$_repo/releases/download/v$pkgver/lightmime-aarch64-unknown-linux-gnu.tar.xz")
+sha256sums=('90d7832b1a6b9be0ab77e24199e71b65836b8716fc8c2d3034b68ba9c4492930')
+sha256sums_x86_64=('771ab74500a8676e13dfc7eb420aaa3b1b4759388d6656937768cfe22b49cdfd')
+sha256sums_aarch64=('11d2ecfd871729c56f8f686fb78504888d14359f78e31246f92b5c5ebe7df2c5')
+
+package() {
+  local bin="lightmime-$CARCH-unknown-linux-gnu"
+  local src="lightmime-$pkgver"
+
+  install -Dm755 "$bin/lightmime" "$pkgdir/usr/bin/lightmime"
+  install -Dm644 "$src/contrib/io.github.pataar.lightmime.desktop" \
+    "$pkgdir/usr/share/applications/io.github.pataar.lightmime.desktop"
+  # The unit in contrib/ runs ~/.local/bin/lightmime, where the docs install the tarball by hand.
+  sed 's|^ExecStart=.*|ExecStart=/usr/bin/lightmime run|' "$src/contrib/lightmime.service" |
+    install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/lightmime.service"
+  install -Dm644 "$src/contrib/config.example.toml" "$pkgdir/usr/share/doc/lightmime/config.example.toml"
+  install -Dm644 "$src/README.md" "$pkgdir/usr/share/doc/lightmime/README.md"
+
+  local icon
+  for icon in "$src"/assets/icons/hicolor/*/apps/*.svg; do
+    install -Dm644 "$icon" "$pkgdir/usr/share/icons/${icon#"$src/assets/icons/"}"
+  done
+
+  install -Dm644 "$src/LICENSE-MIT" "$pkgdir/usr/share/licenses/$pkgname/LICENSE-MIT"
+  install -Dm644 "$src/LICENSE-APACHE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE-APACHE"
+}

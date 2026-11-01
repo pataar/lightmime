@@ -113,3 +113,37 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+  aur:
+    name: Update the AUR package
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: publish
+    runs-on: ubuntu-latest
+    # makepkg writes .SRCINFO; it only exists on Arch.
+    container: archlinux:base-devel
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - name: Push lightmime-bin to the AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
+            echo "::notice::AUR_SSH_PRIVATE_KEY is not set; the AUR package was not updated"
+            exit 0
+          fi
+          case "$TAG" in *-*)
+            echo "::notice::$TAG is a pre-release; the AUR package follows stable releases only"
+            exit 0
+          esac
+          pacman -Syu --noconfirm --needed git openssh
+          packaging/aur/publish.sh "${TAG#v}" "$PWD/dist"
