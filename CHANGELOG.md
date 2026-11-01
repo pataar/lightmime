@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/pataar/lightmime/compare/v0.3.0...v0.4.0) - 2026-11-01
+
+### Added
+
+- control a running lightmime over D-Bus
+- *(gui)* show a live room map in the status card ([#23](https://github.com/pataar/lightmime/pull/23))
+
+### Other
+
+- Hyprland and Omarchy page, remote-control commands
+- make the landing page answer the first questions sooner
+
 ## [0.3.0](https://github.com/pataar/lightmime/compare/v0.2.0...v0.3.0) - 2026-10-29
 
 ### Added
