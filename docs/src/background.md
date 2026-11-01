@@ -50,4 +50,6 @@ Run `lightmime run --start` once by hand first, so you can answer the screen pic
 Follow the log with `journalctl --user -u lightmime -f`. Set `Environment=RUST_LOG=debug` in the `[Service]` section
 for more detail.
 
-Run either the service or the window, not both: only one of them can stream to the area.
+Run either the service or the window, not both: only one of them can stream to the area. lightmime enforces this: while
+the service runs, `lightmime gui` exits with an error instead of starting a second copy. Start, stop and check the service from a script or a
+keybinding with `lightmime start`, `stop`, `toggle` and `status` (see the [CLI reference](cli.md#controlling-a-running-lightmime)).

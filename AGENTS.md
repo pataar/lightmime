@@ -11,7 +11,8 @@ lightmime syncs Philips Hue lights with the screen on Linux. It captures the
 screen via the XDG ScreenCast portal + PipeWire, maps it to one colour per Hue
 Entertainment channel, and streams those to the bridge over DTLS. Frontends:
 a gpui window + tray (`lightmime gui`), a headless daemon (`lightmime run`) and
-the CLI. Home Assistant over MQTT discovery is optional (`[mqtt] enabled`) and
+the CLI, which also drives a running `gui`/`run` over D-Bus (`start`, `stop`,
+`toggle`, `show`, `status`; for keybindings and Waybar). Home Assistant over MQTT discovery is optional (`[mqtt] enabled`) and
 runs inside either `gui` or `run`. Wayland is the target; X11 works because
 gpui and the portal support it, but nothing is X11-specific. No Windows/macOS.
 
@@ -27,7 +28,9 @@ crates/lightmime-core/     library, no UI, no MQTT
   src/engine.rs            Engine handle + actor; owns capture and bridge session, runs the stream thread
   examples/minimal.rs      smallest frontend: pair, first area, sync until Ctrl-C (keep it building)
 crates/lightmime/          the `lightmime` binary
-  src/main.rs              CLI: pair, import-lumux, areas, use-area, test, run, gui (feature `gui`, default)
+  src/main.rs              CLI: pair, import-lumux, areas, use-area, test, run, gui (feature `gui`, default),
+                           start, stop, toggle, show, status (remote control of a running instance)
+  src/control.rs           D-Bus: owns the app id on the session bus (single instance), serves Control, CLI client
   src/settings.rs          AppConfig = core Config (flattened) + [mqtt]; load/save (0600, atomic); FileStore for the GUI
   src/mqtt.rs              Home Assistant MQTT discovery bridge
 crates/lightmime-gui/      window + tray; library called by `lightmime gui`, no config file or MQTT knowledge
@@ -45,6 +48,8 @@ assets/brand/              logo, wordmark, palette (README.md), export.sh → hi
 assets/icons/hicolor/      app icon `lightmime` (scalable + pixel-aligned 16/24 px drawings) and tray icon `lightmime-symbolic` (SVG)
 docs/                      Pages site: build.sh assembles site/ (landing page, CNAME, robots.txt) at /, the mdbook
                            (book.toml, src/, theme/) at /docs/, a sitemap and redirects from old URLs; also the Flatpak repo
+packaging/aur/             PKGBUILD for `lightmime-bin`, update.sh (version + checksums), publish.sh (push to the AUR);
+                           not on the AUR yet (registration closed), so the docs do not mention it
 packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bundle), flatpak-repo.sh (site repo), apt build deps
 .github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release),
                            dependabot-auto-merge.yml (non-major updates squash-merge once `check` passes)
@@ -133,6 +138,20 @@ and are re-sent on reconnect and when `homeassistant/status` reports `online`.
 Renaming keys or unique_ids creates new entities in Home Assistant, so treat
 them as a public API.
 
+## D-Bus contract
+
+`lightmime gui` and `lightmime run` own `io.github.pataar.lightmime` (the app id,
+which a Flatpak may own without a permission) on the session bus and serve
+interface `io.github.pataar.lightmime1` at `/io/github/pataar/lightmime`:
+methods `Start`, `Stop`, `Toggle`, `Show` (NotSupported under `run`); properties
+`State` (`idle|starting|streaming|error`), `Error`, `Area`, `Channels` (all emit
+PropertiesChanged) and `Fps` (does not). A second `gui` hands over to the owner
+(`Show`, plus `Start` with `--start`) and exits; a second `run` fails. Users bind
+keys and Waybar modules to these, so treat names and states as a public API;
+make an incompatible change as a new `…lightmime2` interface. `lightmime status
+--waybar` prints `{"text","alt","class","tooltip"}` with the state (`off` when
+nothing owns the name) in `text`, `alt` and `class`.
+
 ## Commands
 
 `mise install` brings codegraph and mdbook. Run `codegraph init -y` once per
@@ -167,7 +186,13 @@ and push the `vX.Y.Z` tag (with `RELEASE_PLZ_TOKEN`, so the tag starts workflows
 the tag matches, builds the tarballs and Flatpak bundles (x86_64, aarch64),
 creates the GitHub release and triggers `docs.yml`, which imports the bundles
 into the Flatpak repo on the site (signed when the `FLATPAK_GPG_PRIVATE_KEY`
-secret is set).
+secret is set). Its `aur` job then pushes `packaging/aur/PKGBUILD`, with the
+version and checksums filled in by `update.sh`, to the AUR as `lightmime-bin`
+(only for stable tags, and only when the `AUR_SSH_PRIVATE_KEY` secret is set; it
+is not yet, as AUR registration is closed, so the job skips itself). Once the
+package exists, add it to docs/src/install.md, docs/src/hyprland.md and README.md.
+The PKGBUILD in the repo is the template; change packaging there. A
+packaging-only fix needs a `pkgrel` bump pushed by hand with `publish.sh`.
 
 ## Testing against real hardware
 
@@ -190,4 +215,4 @@ secret is set).
 - Logging via `tracing`; the binary honours `RUST_LOG`.
 - Comments explain why, not what. Keep doc comments on public items.
 - Keep docs/src, docs/site, README.md and this file in sync when commands, config keys,
-  entities, the window or the crate layout change.
+  entities, the D-Bus interface, the window or the crate layout change.

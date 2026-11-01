@@ -25,7 +25,9 @@ latency.
 - **A small window and a tray icon**: pair with the bridge, pick an area, start syncing and tune brightness, smoothing
   and saturation while it runs. See [Window and tray](https://lightmime.pataar.nl/docs/gui.html).
 - **Made for Wayland**: capture goes through the screen-cast portal and PipeWire, on KDE Plasma, GNOME and wlroots
-  compositors. You pick the screen once.
+  compositors (Hyprland included). You pick the screen once.
+- **Keybindings and status bars**: `lightmime toggle` and a Waybar module through `lightmime status --waybar --follow`.
+  See [Hyprland and Omarchy](https://lightmime.pataar.nl/docs/hyprland.html).
 - **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/docs/background.html).
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders. See [Home Assistant](https://lightmime.pataar.nl/docs/home-assistant.html).
@@ -57,6 +59,7 @@ lightmime use-area "TV area"         # pick one
 lightmime test                       # 8-second colour sweep, no screen capture
 lightmime run --start                # capture and sync until Ctrl-C
 lightmime gui                        # the window and tray icon
+lightmime toggle                     # start or stop the running lightmime, for a keybinding
 ```
 
 See the [CLI reference](https://lightmime.pataar.nl/docs/cli.html) and [Configuration](https://lightmime.pataar.nl/docs/configuration.html).
