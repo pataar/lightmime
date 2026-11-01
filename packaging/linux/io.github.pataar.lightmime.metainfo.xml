@@ -16,11 +16,18 @@
     </p>
     <p>
       A small window pairs with the bridge, picks the area and tunes brightness, smoothing and saturation; a tray icon
-      starts and stops syncing. Optionally, it shows up in Home Assistant over MQTT.
+      starts and stops syncing. Optionally, it shows up in Home Assistant over MQTT, or runs headless as a systemd
+      user service.
+    </p>
+    <p>
+      It is made for Wayland: the screen is captured through the desktop's screen-cast portal and PipeWire, on GNOME,
+      KDE Plasma and wlroots compositors such as Sway and Hyprland. X11 works too. No Hue Sync Box and no Hue account
+      are needed; lightmime only talks to the bridge on your local network.
     </p>
   </description>
   <launchable type="desktop-id">io.github.pataar.lightmime.desktop</launchable>
   <url type="homepage">https://lightmime.pataar.nl/</url>
+  <url type="help">https://lightmime.pataar.nl/docs/</url>
   <url type="bugtracker">https://github.com/pataar/lightmime/issues</url>
   <url type="vcs-browser">https://github.com/pataar/lightmime</url>
   <screenshots>
@@ -33,6 +40,10 @@
       <image>https://raw.githubusercontent.com/pataar/lightmime/main/docs/src/images/window-dark.png</image>
     </screenshot>
   </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#f4f2ff</color>
+    <color type="primary" scheme_preference="dark">#0c0d18</color>
+  </branding>
   <content_rating type="oars-1.1"/>
   <requires>
     <display_length compare="ge">360</display_length>
@@ -48,5 +59,9 @@
     <keyword>philips</keyword>
     <keyword>ambilight</keyword>
     <keyword>lights</keyword>
+    <keyword>sync</keyword>
+    <keyword>entertainment</keyword>
+    <keyword>ambient</keyword>
+    <keyword>wayland</keyword>
   </keywords>
 </component>

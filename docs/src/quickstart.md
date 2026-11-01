@@ -3,9 +3,7 @@
 1. **Install lightmime.** The Flatpak is the easiest way:
 
    ```sh
-   flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-   flatpak remote-add --user --if-not-exists lightmime https://lightmime.pataar.nl/flatpak/lightmime.flatpakrepo
-   flatpak install --user lightmime io.github.pataar.lightmime
+   flatpak install --user https://lightmime.pataar.nl/flatpak/lightmime.flatpakref
    ```
 
    Other ways are under [Install](install.md).

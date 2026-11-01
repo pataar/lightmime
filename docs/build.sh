@@ -9,6 +9,17 @@ site_url=https://lightmime.pataar.nl
 rm -rf book
 mdbook build
 cp -r site/. book/
+# The landing page shows the current release, so a visitor sees it is maintained. The changelog dates it; a version
+# without an entry yet (a bump not released) shows no date.
+version=$(sed -n 's/^version = "\(.*\)"$/\1/p' ../Cargo.toml | head -n1)
+release_date=$(sed -n "s/^## \[$version\].* - \([0-9-]*\)$/\1/p" ../CHANGELOG.md | head -n1)
+if [ -n "$release_date" ]; then
+    release_date_text=$(date -u -d "$release_date" '+%-d %B %Y')
+else
+    release_date_text="soon"
+fi
+sed -i -e "s/@VERSION@/$version/g" -e "s/@RELEASE_DATE@/$release_date/g" \
+    -e "s/@RELEASE_DATE_TEXT@/$release_date_text/g" book/index.html
 # GitHub Pages serves only the root 404.html; the book's version loads its assets from /docs/.
 cp book/docs/404.html book/
 # mdbook fingerprints its copy of the favicon; the landing page needs a stable URL.

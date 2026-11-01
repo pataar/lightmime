@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lightmime: Philips Hue screen sync for Linux</title>
-<meta name="description" content="lightmime syncs Philips Hue lights with your screen on Linux. Ambilight-style lighting over the Hue Entertainment API, made for Wayland: KDE Plasma, GNOME and wlroots. Free and open source.">
+<meta name="description" content="lightmime syncs Philips Hue lights with your screen on Linux: an open-source alternative to Hue Sync. Ambilight-style lighting over the Hue Entertainment API, made for Wayland: KDE Plasma, GNOME and wlroots. No Sync Box, no account.">
 <link rel="canonical" href="https://lightmime.pataar.nl/">
 <meta name="theme-color" content="#0c0d18">
 <meta name="color-scheme" content="light dark">
@@ -40,6 +40,8 @@ try { const theme = localStorage.getItem("theme"); if (theme) document.documentE
   "codeRepository": "https://github.com/pataar/lightmime",
   "downloadUrl": "https://github.com/pataar/lightmime/releases/latest",
   "softwareHelp": "https://lightmime.pataar.nl/docs/",
+  "softwareVersion": "@VERSION@",
+  "datePublished": "@RELEASE_DATE@",
   "author": { "@type": "Person", "name": "pataar", "url": "https://github.com/pataar" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
 }
@@ -112,8 +114,16 @@ header.top nav a:hover { color: var(--accent); }
 }
 
 .hero { padding: 48px 0 80px; overflow: hidden; }
-.hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+/* Top-aligned: centred next to the tall window, the headline and buttons would start below a laptop's fold. */
+.hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: start; }
+.hero .copy { padding-top: 32px; }
+.kicker { margin: 0 0 12px; color: var(--accent); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .hero h1 { font-size: clamp(2.3rem, 6vw, 3.8rem); margin: 0 0 1rem; }
+.trust { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 28px 0 0; font-weight: 500; }
+.trust li { display: flex; align-items: center; gap: 8px; }
+.trust svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.release { margin: 20px 0 0; color: var(--muted); font-size: 0.95rem; }
+.release a { color: var(--muted); }
 .hero h1 span {
     background: var(--spectrum);
     -webkit-background-clip: text;
@@ -237,6 +247,27 @@ pre {
     margin: 24px 0 16px;
 }
 pre .prompt { color: #8c8daa; user-select: none; }
+.code { position: relative; }
+.code pre { padding-right: 88px; }
+.copy-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border: 1px solid #2c2d4a;
+    border-radius: 8px;
+    background: #14152a;
+    color: var(--code-fg);
+    cursor: pointer;
+}
+.copy-button:hover { border-color: #7c5cff; }
+.copy-button:focus-visible { outline: 3px solid #7c5cff; outline-offset: 2px; }
+.steps { padding-left: 1.4rem; }
+.steps li { margin: 0.5rem 0; padding-left: 0.3rem; }
+.steps li::marker { color: var(--accent); font-weight: 700; }
 .requirements { padding-left: 1.2rem; color: var(--muted); }
 .requirements li { margin: 0.3rem 0; }
 
@@ -326,6 +357,7 @@ footer a { color: var(--muted); }
     .stage .icon { position: absolute; left: -64px; top: 0; }
     .stage .step { margin-top: 0; }
     .hero { padding-top: 24px; }
+    .hero .copy { padding-top: 0; }
     .hero .wrap { grid-template-columns: 1fr; }
     .shot { max-width: 300px; }
     header.top nav .optional { display: none; }
@@ -359,18 +391,29 @@ footer a { color: var(--muted); }
 <main id="main">
     <section class="hero">
         <div class="wrap">
-            <div>
+            <div class="copy">
+                <p class="kicker">Philips Hue screen sync for Linux</p>
                 <h1>Your Hue lights, <span>following your screen</span>.</h1>
                 <p class="lead">
-                    lightmime syncs Philips Hue lights with your screen on Linux. The left of the picture goes to the
-                    lights left of your monitor or TV, the top to the lights above it, streamed over the Hue
-                    Entertainment API with low latency, the way Hue Sync does on other systems.
+                    lightmime colours the lights around your monitor or TV to match what is on it: the left of the
+                    picture on the lights to its left, the top on the lights above. It streams over the Hue
+                    Entertainment API, the way Hue Sync does on Windows and macOS, and it is made for Wayland.
                 </p>
                 <div class="actions">
                     <a class="button primary" href="#install">Install</a>
-                    <a class="button" href="/docs/quickstart.html">Quickstart</a>
                     <a class="button" href="https://github.com/pataar/lightmime">Source on GitHub</a>
                 </div>
+                <ul class="trust">
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>No Sync Box</li>
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>No Hue account</li>
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Stays on your network</li>
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Free and open source</li>
+                </ul>
+                <p class="release">
+                    Version @VERSION@, released @RELEASE_DATE_TEXT@ ·
+                    <a href="https://github.com/pataar/lightmime/blob/main/CHANGELOG.md">Changelog</a> ·
+                    x86_64 and aarch64
+                </p>
             </div>
             <div class="shot">
                 <picture>
@@ -379,31 +422,6 @@ footer a { color: var(--muted); }
                         alt="The lightmime window while syncing to a Hue entertainment area with six lights">
                 </picture>
             </div>
-        </div>
-    </section>
-
-    <section id="footprint" class="alt">
-        <div class="wrap">
-            <h2>A tiny footprint</h2>
-            <p class="lead">
-                One native Rust binary: no interpreter, browser engine or web server. It drops frames above the sync rate
-                and shrinks the rest before looking at them, so it keeps out of the way of whatever is on your screen.
-            </p>
-            <div class="stats">
-                <div class="stat"><strong>0.9&nbsp;%</strong><span>of one CPU core</span><small>while syncing at 30 fps</small></div>
-                <div class="stat"><strong>36&nbsp;MB</strong><span>of memory</span><small>resident; 26 MB proportional</small></div>
-                <div class="stat"><strong>12.5&nbsp;MB</strong><span>headless binary</span><small>40 MB with the window and tray</small></div>
-                <div class="stat"><strong>2,304</strong><span>pixels per frame</span><small>every frame is scaled to 64 × 36 first</small></div>
-            </div>
-            <figure class="downscale">
-                <div class="screen" role="img" aria-label="A 3440 by 1440 screen with a 64 by 36 frame drawn to scale in its corner"><div class="frame"></div></div>
-                <figcaption>
-                    <b>The glowing speck is to scale.</b> A 3440 × 1440 desktop is almost five million pixels; the colour
-                    mapping only ever sees 64 × 36 of them. Measured with <code>lightmime run</code> and the Home
-                    Assistant bridge on, syncing four lights on a Ryzen 9 5900XT over 60 seconds.
-                    <a href="/docs/comparison.html#resource-use">How it was measured</a>
-                </figcaption>
-            </figure>
         </div>
     </section>
 
@@ -452,6 +470,81 @@ footer a { color: var(--muted); }
         </div>
     </section>
 
+    <section id="install" class="alt">
+        <div class="wrap">
+            <h2>Install</h2>
+            <p class="lead">One command with Flatpak, for x86_64 and aarch64. Then pair with the bridge, choose an area and press Start.</p>
+            <div class="tabs">
+                <div class="tablist" role="tablist" aria-label="Installation method">
+                    <button type="button" role="tab" id="tab-flatpak" aria-controls="panel-flatpak" aria-selected="true">Flatpak</button>
+                    <button type="button" role="tab" id="tab-binary" aria-controls="panel-binary" aria-selected="false" tabindex="-1">Binary</button>
+                    <button type="button" role="tab" id="tab-cargo" aria-controls="panel-cargo" aria-selected="false" tabindex="-1">Cargo</button>
+                    <button type="button" role="tab" id="tab-source" aria-controls="panel-source" aria-selected="false" tabindex="-1">Source</button>
+                </div>
+                <div class="tabpanel" role="tabpanel" id="panel-flatpak" aria-labelledby="tab-flatpak">
+                    <p>Recommended. This adds lightmime's own Flatpak repository, so new releases arrive through <code>flatpak update</code> or your software centre. The runtime comes from Flathub.</p>
+<pre><code><span class="prompt">$ </span>flatpak install --user https://lightmime.pataar.nl/flatpak/lightmime.flatpakref</code></pre>
+                    <p>Or <a href="/flatpak/lightmime.flatpakref">download lightmime.flatpakref</a> and open it with GNOME Software or Discover. <a href="/docs/install.html#flatpak">Install</a> shows how to add the repository by hand.</p>
+                </div>
+                <div class="tabpanel" role="tabpanel" id="panel-binary" aria-labelledby="tab-binary">
+                    <p>A tarball from the <a href="https://github.com/pataar/lightmime/releases/latest">latest release</a>. It uses your system's GStreamer and OpenSSL; <a href="/docs/install.html#binary">Install</a> lists the packages per distribution and how to add the launcher entry.</p>
+<pre><code><span class="prompt">$ </span>curl -LO https://github.com/pataar/lightmime/releases/latest/download/lightmime-x86_64-unknown-linux-gnu.tar.xz
+<span class="prompt">$ </span>tar -xJf lightmime-x86_64-unknown-linux-gnu.tar.xz
+<span class="prompt">$ </span>install -Dm755 lightmime-x86_64-unknown-linux-gnu/lightmime ~/.local/bin/lightmime</code></pre>
+                </div>
+                <div class="tabpanel" role="tabpanel" id="panel-cargo" aria-labelledby="tab-cargo">
+                    <p>From crates.io. Needs Rust and the development files of GStreamer, OpenSSL and xkbcommon; <a href="/docs/install.html#from-source">Install</a> lists them per distribution.</p>
+<pre><code><span class="prompt">$ </span>cargo install --locked lightmime
+<span class="prompt">$ </span>cargo install --locked lightmime --no-default-features  <span class="prompt"># headless, without window and tray</span></code></pre>
+                </div>
+                <div class="tabpanel" role="tabpanel" id="panel-source" aria-labelledby="tab-source">
+                    <p>From a checkout, with the same build dependencies as Cargo.</p>
+<pre><code><span class="prompt">$ </span>git clone https://github.com/pataar/lightmime
+<span class="prompt">$ </span>cd lightmime
+<span class="prompt">$ </span>cargo install --locked --path crates/lightmime</code></pre>
+                </div>
+            </div>
+            <h3>What you need</h3>
+            <ul class="requirements">
+                <li>A Philips Hue bridge (the square, second-generation one) with an entertainment area set up in the Hue app.</li>
+                <li>A Linux desktop with PipeWire and <code>xdg-desktop-portal</code> with a screen-casting backend. Most current desktops have both: GNOME, KDE Plasma, Sway, Hyprland and other wlroots compositors, and X11.</li>
+                <li>No Hue Sync Box and no Hue account: lightmime pairs with the bridge on your network.</li>
+            </ul>
+            <h3>Then, in a couple of minutes</h3>
+            <ol class="steps">
+                <li>Open lightmime, press <b>Find</b>, then <b>Pair</b> and the round link button on the bridge.</li>
+                <li>Choose the entertainment area and press <b>Start</b>.</li>
+                <li>Your desktop asks once which screen to share. From then on the tray icon starts and stops syncing.</li>
+            </ol>
+            <p class="more"><a href="/docs/quickstart.html">The Quickstart has the details, and the same steps on the command line</a></p>
+        </div>
+    </section>
+
+    <section id="footprint">
+        <div class="wrap">
+            <h2>A tiny footprint</h2>
+            <p class="lead">
+                One native Rust binary: no interpreter, browser engine or web server. It drops frames above the sync rate
+                and shrinks the rest before looking at them, so it keeps out of the way of whatever is on your screen.
+            </p>
+            <div class="stats">
+                <div class="stat"><strong>0.9&nbsp;%</strong><span>of one CPU core</span><small>while syncing at 30 fps</small></div>
+                <div class="stat"><strong>36&nbsp;MB</strong><span>of memory</span><small>resident; 26 MB proportional</small></div>
+                <div class="stat"><strong>12.5&nbsp;MB</strong><span>headless binary</span><small>40 MB with the window and tray</small></div>
+                <div class="stat"><strong>2,304</strong><span>pixels per frame</span><small>every frame is scaled to 64 × 36 first</small></div>
+            </div>
+            <figure class="downscale">
+                <div class="screen" role="img" aria-label="A 3440 by 1440 screen with a 64 by 36 frame drawn to scale in its corner"><div class="frame"></div></div>
+                <figcaption>
+                    <b>The glowing speck is to scale.</b> A 3440 × 1440 desktop is almost five million pixels; the colour
+                    mapping only ever sees 64 × 36 of them. Measured with <code>lightmime run</code> and the Home
+                    Assistant bridge on, syncing four lights on a Ryzen 9 5900XT over 60 seconds.
+                    <a href="/docs/comparison.html#resource-use">How it was measured</a>
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
     <section id="how-it-works" class="alt">
         <div class="wrap">
             <h2>How it works</h2>
@@ -480,49 +573,6 @@ footer a { color: var(--muted); }
                 </li>
             </ol>
             <p class="more"><a href="/docs/how-it-works.html">Read the details in How it works</a></p>
-        </div>
-    </section>
-
-    <section id="install">
-        <div class="wrap">
-            <h2>Install</h2>
-            <p class="lead">Releases are built for x86_64 and aarch64. Then follow the <a href="/docs/quickstart.html">Quickstart</a>: pair, choose an area, press Start.</p>
-            <div class="tabs">
-                <div class="tablist" role="tablist" aria-label="Installation method">
-                    <button type="button" role="tab" id="tab-flatpak" aria-controls="panel-flatpak" aria-selected="true">Flatpak</button>
-                    <button type="button" role="tab" id="tab-binary" aria-controls="panel-binary" aria-selected="false" tabindex="-1">Binary</button>
-                    <button type="button" role="tab" id="tab-cargo" aria-controls="panel-cargo" aria-selected="false" tabindex="-1">Cargo</button>
-                    <button type="button" role="tab" id="tab-source" aria-controls="panel-source" aria-selected="false" tabindex="-1">Source</button>
-                </div>
-                <div class="tabpanel" role="tabpanel" id="panel-flatpak" aria-labelledby="tab-flatpak">
-                    <p>Recommended. lightmime has its own Flatpak repository, so new releases arrive through <code>flatpak update</code> or your software centre.</p>
-<pre><code><span class="prompt">$ </span>flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-<span class="prompt">$ </span>flatpak remote-add --user --if-not-exists lightmime https://lightmime.pataar.nl/flatpak/lightmime.flatpakrepo
-<span class="prompt">$ </span>flatpak install --user lightmime io.github.pataar.lightmime</code></pre>
-                </div>
-                <div class="tabpanel" role="tabpanel" id="panel-binary" aria-labelledby="tab-binary">
-                    <p>A tarball from the <a href="https://github.com/pataar/lightmime/releases/latest">latest release</a>. It uses your system's GStreamer and OpenSSL; <a href="/docs/install.html#binary">Install</a> lists the packages per distribution and how to add the launcher entry.</p>
-<pre><code><span class="prompt">$ </span>curl -LO https://github.com/pataar/lightmime/releases/latest/download/lightmime-x86_64-unknown-linux-gnu.tar.xz
-<span class="prompt">$ </span>tar -xJf lightmime-x86_64-unknown-linux-gnu.tar.xz
-<span class="prompt">$ </span>install -Dm755 lightmime-x86_64-unknown-linux-gnu/lightmime ~/.local/bin/lightmime</code></pre>
-                </div>
-                <div class="tabpanel" role="tabpanel" id="panel-cargo" aria-labelledby="tab-cargo">
-                    <p>From crates.io. Needs Rust and the development files of GStreamer, OpenSSL and xkbcommon; <a href="/docs/install.html#from-source">Install</a> lists them per distribution.</p>
-<pre><code><span class="prompt">$ </span>cargo install --locked lightmime
-<span class="prompt">$ </span>cargo install --locked lightmime --no-default-features  <span class="prompt"># headless, without window and tray</span></code></pre>
-                </div>
-                <div class="tabpanel" role="tabpanel" id="panel-source" aria-labelledby="tab-source">
-                    <p>From a checkout, with the same build dependencies as Cargo.</p>
-<pre><code><span class="prompt">$ </span>git clone https://github.com/pataar/lightmime
-<span class="prompt">$ </span>cd lightmime
-<span class="prompt">$ </span>cargo install --locked --path crates/lightmime</code></pre>
-                </div>
-            </div>
-            <h3>What you need</h3>
-            <ul class="requirements">
-                <li>A Philips Hue bridge (the square, second-generation one) with an entertainment area set up in the Hue app.</li>
-                <li>A Linux desktop with PipeWire and <code>xdg-desktop-portal</code> with a screen-casting backend. Most current desktops have both.</li>
-            </ul>
         </div>
     </section>
 </main>
@@ -579,6 +629,31 @@ for (const [index, tab] of tabs.entries()) {
     });
 }
 selectTab(tabs[0]);
+
+// The prompts and comments are only for reading; the clipboard gets the commands.
+for (const pre of document.querySelectorAll("pre")) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "code";
+    pre.replaceWith(wrapper);
+    wrapper.append(pre);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy-button";
+    button.textContent = "Copy";
+    button.addEventListener("click", async () => {
+        const code = pre.cloneNode(true);
+        for (const prompt of code.querySelectorAll(".prompt")) prompt.remove();
+        const text = code.textContent.split("\n").map((line) => line.trimEnd()).join("\n").trim();
+        try {
+            await navigator.clipboard.writeText(text);
+            button.textContent = "Copied";
+        } catch {
+            button.textContent = "Select and copy";
+        }
+        setTimeout(() => { button.textContent = "Copy"; }, 2000);
+    });
+    wrapper.append(button);
+}
 
 </script>
 </body>

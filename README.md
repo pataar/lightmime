@@ -36,16 +36,17 @@ latency.
 ## Install
 
 ```sh
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak remote-add --user --if-not-exists lightmime https://lightmime.pataar.nl/flatpak/lightmime.flatpakrepo
-flatpak install --user lightmime io.github.pataar.lightmime
+flatpak install --user https://lightmime.pataar.nl/flatpak/lightmime.flatpakref
 ```
 
 Release binaries and building from source are under [Install](https://lightmime.pataar.nl/docs/install.html). Then follow
 the [Quickstart](https://lightmime.pataar.nl/docs/quickstart.html): pair, choose an area, press Start.
 
+This adds lightmime's Flatpak repository, so `flatpak update` brings new releases; the runtime comes from Flathub.
+
 You need a Hue bridge with an entertainment area set up in the Hue app, and a desktop with PipeWire and an
-`xdg-desktop-portal` backend that offers screen casting.
+`xdg-desktop-portal` backend that offers screen casting. You don't need a Hue Sync Box or a Hue account: lightmime pairs
+with the bridge on your network.
 
 ## From the command line
 

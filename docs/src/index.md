@@ -10,6 +10,8 @@ Sync does, over the Entertainment API, so the lights follow the picture with low
   brightness, smoothing and saturation while it runs. The tray starts and stops syncing without opening anything.
 - **Made for Wayland.** Screen capture goes through the desktop's screen-cast portal and PipeWire, so it works on KDE
   Plasma, GNOME and wlroots compositors. You choose the screen once; lightmime remembers it.
+- **No Sync Box, no account.** lightmime pairs with the bridge on your network with its link button, like the Hue
+  app does; nothing goes through Philips' cloud.
 - **Headless if you like.** `lightmime run` syncs without a window, for example as a systemd user service.
 - **Home Assistant, optionally.** Turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders, so a dashboard or an automation can start it. Without MQTT it never talks to anything but your bridge.
