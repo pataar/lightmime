@@ -266,7 +266,7 @@ impl MqttBridge {
                     "state_topic": self.topic("status/state"),
                     "json_attributes_topic": self.topic("status/attributes"),
                     "device_class": "enum",
-                    "options": ["idle", "starting", "streaming", "error"],
+                    "options": EngineState::LABELS,
                 }),
             ),
             (

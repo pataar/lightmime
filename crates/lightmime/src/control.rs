@@ -131,11 +131,7 @@ impl Control {
 
     /// Stop when starting or syncing, start otherwise (also after an error).
     fn toggle(&self) {
-        if self.engine.status().state.is_active() {
-            self.engine.stop();
-        } else {
-            self.engine.start();
-        }
+        self.engine.toggle();
     }
 
     /// Open the window or bring it to the front.

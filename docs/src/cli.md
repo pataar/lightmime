@@ -65,7 +65,7 @@ config file and fail with an error when lightmime is not running. They are meant
 | Command | |
 |---|---|
 | `lightmime start` | Start syncing. |
-| `lightmime stop` | Stop syncing and release the area. |
+| `lightmime stop` | Stop syncing and release the area. While starting, it also closes the screen picker. |
 | `lightmime toggle` | Stop when syncing or starting, start otherwise. |
 | `lightmime show` | Open the window, or bring it to the front. Fails under `lightmime run`. |
 | `lightmime status` | Print the state in a sentence; `lightmime is not running` (and success) when it is not. |

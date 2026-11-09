@@ -58,8 +58,8 @@ packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bu
 ## Architecture rules
 
 - `lightmime-core` stays frontend-agnostic: no MQTT, CLI or GUI code there.
-  Frontends interact only through `Engine` (`spawn`, `start`, `stop`,
-  `set_bridge`, `status`/`subscribe`, `settings`/`subscribe_settings`/`update_settings`,
+  Frontends interact only through `Engine` (`spawn`, `start`, `stop`, `toggle`,
+  `stop_and_wait` (before exiting), `set_bridge`, `status`/`subscribe`, `settings`/`subscribe_settings`/`update_settings`,
   `subscribe_colors`; the window draws its room map and background from the latter while syncing).
   `lightmime-gui` embeds `Engine` the same way the daemon does; with MQTT on,
   both share one engine in the `gui` process.
@@ -68,12 +68,23 @@ packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bu
   loop is time-critical. Live settings live in a `tokio::sync::watch` channel
   (read every frame with `borrow()`, so the window and MQTT see each other's
   changes); status goes out through another `watch` channel.
+- The actor's `Phase` (`Idle`, `Starting`, `Active`) is the engine's state
+  machine; the doc comment on `EngineState` has the transition table, and only
+  the actor writes the state (the stream thread reports `Command::Connected` /
+  `Command::StreamFailed` with its session id; stale ids are ignored). Opening
+  a session runs as its own task, so commands are heard during it: a stop or
+  `set_bridge` while starting folds into `Then` (pure, unit-tested) and cancels
+  the opening, closing the portal's screen picker. Once the area is started the
+  opening is not cancelled; the `Lease` it returns is released instead.
 - `set_bridge` replaces the bridge config (after pairing or choosing an area
-  in the GUI) and restarts a running session on it.
-- Stream errors are reported back to the actor (`Command::StreamFailed`), which
-  stops the entertainment area and capture and moves to `EngineState::Error`.
-  Always stop the area on the bridge when a session ends, or the lights stay
-  locked in streaming mode.
+  in the GUI) and restarts a running or starting session on it.
+- Stream errors stop the entertainment area and capture and move to
+  `EngineState::Error`. Always release the `Lease` when a session ends, or the
+  lights stay locked in streaming mode; dropping the last `Engine` handle does.
+- `EngineState::LABELS` and `label()` are a public API (MQTT, D-Bus, Waybar);
+  do not add a state there without a new D-Bus interface version.
+- `BridgeConfig::setup()` (`Unpaired` → `NoArea` → `Ready`) is the setup flow;
+  check it instead of testing the fields.
 - `SyncSettings::sanitized()` is the single place values get clamped; call it
   whenever settings change.
 

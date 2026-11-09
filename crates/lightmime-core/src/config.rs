@@ -23,9 +23,31 @@ pub struct BridgeConfig {
     pub entertainment_config_id: String,
 }
 
+/// How far the bridge setup has got. Each step needs the one before it:
+/// pair, then choose an entertainment area, then sync.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Setup {
+    /// No bridge credentials yet.
+    Unpaired,
+    /// Paired, but no entertainment area chosen.
+    NoArea,
+    /// Everything syncing needs is there.
+    Ready,
+}
+
 impl BridgeConfig {
     pub fn is_paired(&self) -> bool {
         !self.host.is_empty() && !self.app_key.is_empty() && !self.client_key.is_empty()
+    }
+
+    pub fn setup(&self) -> Setup {
+        if !self.is_paired() {
+            Setup::Unpaired
+        } else if self.entertainment_config_id.is_empty() {
+            Setup::NoArea
+        } else {
+            Setup::Ready
+        }
     }
 }
 
@@ -127,5 +149,19 @@ mod tests {
         assert_eq!(settings.smoothing, defaults.smoothing);
         assert_eq!(settings.saturation, defaults.saturation);
         assert_eq!(settings.region_size, defaults.region_size);
+    }
+
+    #[test]
+    fn setup_goes_pair_then_area() {
+        let mut bridge = BridgeConfig::default();
+        assert_eq!(bridge.setup(), Setup::Unpaired);
+        bridge.host = "192.168.1.20".into();
+        bridge.app_key = "key".into();
+        bridge.client_key = "00".into();
+        assert_eq!(bridge.setup(), Setup::NoArea);
+        bridge.entertainment_config_id = "area".into();
+        assert_eq!(bridge.setup(), Setup::Ready);
+        bridge.app_key.clear();
+        assert_eq!(bridge.setup(), Setup::Unpaired);
     }
 }
