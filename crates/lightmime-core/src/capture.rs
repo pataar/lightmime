@@ -52,6 +52,17 @@ impl ScreenCapture {
         max_fps: u32,
         restore_token: Option<&str>,
     ) -> Result<(Self, Option<String>)> {
+        Self::start_or_cancel(config, max_fps, restore_token, std::future::pending()).await
+    }
+
+    /// [`Self::start`], given up when `cancel` completes first: the portal
+    /// session is closed, which takes its screen picker away with it.
+    pub async fn start_or_cancel(
+        config: &CaptureConfig,
+        max_fps: u32,
+        restore_token: Option<&str>,
+        cancel: impl Future<Output = ()>,
+    ) -> Result<(Self, Option<String>)> {
         gst::init().context("initialising GStreamer")?;
 
         let portal = Screencast::new()
@@ -61,13 +72,44 @@ impl ScreenCapture {
             .create_session(Default::default())
             .await
             .context("creating a screen-cast session")?;
+        // The portal keeps a session open until it is closed, not when it is dropped.
+        let result = tokio::select! {
+            result = Self::start_in(&portal, &session, config, max_fps, restore_token) => result,
+            () = cancel => Err(anyhow!("cancelled while choosing a screen")),
+        };
+        match result {
+            Ok(cast) => Ok((
+                Self {
+                    pipeline: cast.pipeline,
+                    limit: cast.limit,
+                    rate: cast.rate,
+                    latest: cast.latest,
+                    session,
+                    _pipewire_fd: cast.fd,
+                },
+                cast.restore_token,
+            )),
+            Err(e) => {
+                let _ = session.close().await;
+                Err(e)
+            }
+        }
+    }
+
+    async fn start_in(
+        portal: &Screencast,
+        session: &Session<Screencast>,
+        config: &CaptureConfig,
+        max_fps: u32,
+        restore_token: Option<&str>,
+    ) -> Result<Started> {
         let source = match config.source {
             SourceKind::Monitor => SourceType::Monitor,
             SourceKind::Window => SourceType::Window,
         };
         portal
             .select_sources(
-                &session,
+                session,
                 SelectSourcesOptions::default()
                     .set_cursor_mode(CursorMode::Hidden)
                     .set_sources(BitFlags::from(source))
@@ -78,7 +120,7 @@ impl ScreenCapture {
             .await
             .context("selecting capture sources")?;
         let streams = portal
-            .start(&session, None, Default::default())
+            .start(session, None, Default::default())
             .await
             .context("starting the screen cast")?
             .response()
@@ -91,7 +133,7 @@ impl ScreenCapture {
         let new_token = streams.restore_token().map(str::to_owned);
 
         let fd = portal
-            .open_pipe_wire_remote(&session, Default::default())
+            .open_pipe_wire_remote(session, Default::default())
             .await
             .context("opening the PipeWire remote")?;
 
@@ -101,22 +143,20 @@ impl ScreenCapture {
             fd.as_raw_fd()
         );
         let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
-        pipeline
-            .set_state(gst::State::Playing)
-            .context("starting the capture pipeline")?;
+        if let Err(e) = pipeline.set_state(gst::State::Playing) {
+            let _ = pipeline.set_state(gst::State::Null);
+            return Err(e).context("starting the capture pipeline");
+        }
 
         tracing::info!("capturing PipeWire node {node_id}");
-        Ok((
-            Self {
-                pipeline,
-                limit,
-                rate,
-                latest,
-                session,
-                _pipewire_fd: fd,
-            },
-            new_token,
-        ))
+        Ok(Started {
+            pipeline,
+            limit,
+            rate,
+            latest,
+            fd,
+            restore_token: new_token,
+        })
     }
 
     /// A handle for reading frames from another thread.
@@ -155,6 +195,16 @@ impl ScreenCapture {
         let _ = self.pipeline.set_state(gst::State::Null);
         let _ = self.session.close().await;
     }
+}
+
+/// What [`ScreenCapture::start_in`] sets up inside a portal session.
+struct Started {
+    pipeline: gst::Pipeline,
+    limit: gst::Element,
+    rate: gst::Element,
+    latest: Arc<Mutex<Option<Frame>>>,
+    fd: OwnedFd,
+    restore_token: Option<String>,
 }
 
 impl Drop for ScreenCapture {

@@ -66,11 +66,6 @@ async fn main() -> Result<()> {
     }
 
     // Wait for the engine to release the area, or the lights stay in streaming mode.
-    engine.stop();
-    let _ = tokio::time::timeout(
-        Duration::from_secs(5),
-        status.wait_for(|s| !s.state.is_active()),
-    )
-    .await;
+    let _ = tokio::time::timeout(Duration::from_secs(5), engine.stop_and_wait()).await;
     Ok(())
 }

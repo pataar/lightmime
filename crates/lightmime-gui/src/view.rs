@@ -13,7 +13,7 @@ use gpui::{
 use lightmime_core::color::Zone;
 use lightmime_core::config::{MAX_SATURATION, MAX_SMOOTHING};
 use lightmime_core::hue::{self, Bridge, ChannelColor, DiscoveredBridge};
-use lightmime_core::{BridgeConfig, EngineState, Status, SyncSettings};
+use lightmime_core::{BridgeConfig, EngineState, Setup, Status, SyncSettings};
 
 use crate::Shared;
 use crate::autostart;
@@ -60,17 +60,45 @@ const SLIDERS: [SliderSpec; 3] = [
     },
 ];
 
+/// The pairing form, shown while the bridge is unpaired.
 enum Pairing {
     Idle,
     Discovering,
+    /// Waiting for the link button; cancelling aborts the job.
     Waiting(tokio::task::AbortHandle),
 }
 
+/// The bridge's entertainment areas, shown once paired.
 enum Areas {
     Unloaded,
-    Loading,
+    /// Aborted when the bridge is forgotten or the list is reloaded, so an old
+    /// answer never replaces a newer one.
+    Loading(tokio::task::AbortHandle),
     Loaded(Vec<hue::EntertainmentConfiguration>),
     Failed(String),
+}
+
+impl Areas {
+    fn unload(&mut self) {
+        if let Self::Loading(job) = std::mem::replace(self, Self::Unloaded) {
+            job.abort();
+        }
+    }
+}
+
+/// The login item as read from disk, and the change on its way, if any.
+#[derive(Clone, Copy)]
+struct LoginItemSwitch {
+    saved: autostart::LoginItem,
+    /// Shown while the portal or the file system works on it; further clicks
+    /// wait until it lands, so one change never races another.
+    saving: Option<autostart::LoginItem>,
+}
+
+impl LoginItemSwitch {
+    fn shown(self) -> autostart::LoginItem {
+        self.saving.unwrap_or(self.saved)
+    }
 }
 
 pub struct MainView {
@@ -82,7 +110,7 @@ pub struct MainView {
     pairing: Pairing,
     discovered: Vec<DiscoveredBridge>,
     areas: Areas,
-    autostart: autostart::LoginItem,
+    autostart: LoginItemSwitch,
     /// The last failed action, shown until the next one.
     notice: Option<String>,
     slider_bounds: [Rc<Cell<Bounds<Pixels>>>; 3],
@@ -118,7 +146,10 @@ impl MainView {
             pairing: Pairing::Idle,
             discovered: Vec::new(),
             areas: Areas::Unloaded,
-            autostart: autostart::current(),
+            autostart: LoginItemSwitch {
+                saved: autostart::current(),
+                saving: None,
+            },
             notice: None,
             drag: Drag::default(),
             colors: Vec::new(),
@@ -230,23 +261,24 @@ impl MainView {
         let host = self.bridge.host.clone();
         self.set_bridge(BridgeConfig::default());
         self.host.update(cx, |input, cx| input.set_text(host, cx));
-        self.areas = Areas::Unloaded;
+        self.areas.unload();
     }
 
     fn load_areas(&mut self, cx: &mut Context<Self>) {
+        self.areas.unload();
         let bridge = self.bridge.clone();
-        self.areas = Areas::Loading;
         let job = async move {
             Bridge::new(&bridge.host, &bridge.app_key)?
                 .entertainment_configurations()
                 .await
         };
-        self.run_job(job, cx, |this, result, _| {
+        let abort = self.run_job(job, cx, |this, result, _| {
             this.areas = match result {
                 Ok(areas) => Areas::Loaded(areas),
                 Err(e) => Areas::Failed(format!("{e:#}")),
             };
         });
+        self.areas = Areas::Loading(abort);
     }
 
     fn choose_area(&mut self, id: String) {
@@ -271,14 +303,18 @@ impl MainView {
     }
 
     fn set_autostart(&mut self, item: autostart::LoginItem, cx: &mut Context<Self>) {
-        self.run_job(
-            autostart::set(item),
-            cx,
-            move |this, result, _| match result {
-                Ok(()) => this.autostart = item,
+        if self.autostart.saving.is_some() {
+            return;
+        }
+        self.autostart.saving = Some(item);
+        self.run_job(autostart::set(item), cx, move |this, result, _| {
+            this.autostart.saving = None;
+            match result {
+                Ok(()) => this.autostart.saved = item,
                 Err(e) => this.notice = Some(format!("Could not change the login item: {e:#}")),
-            },
-        );
+            }
+        });
+        cx.notify();
     }
 
     fn render_status(&self, theme: Theme, cx: &mut Context<Self>) -> impl IntoElement {
@@ -288,6 +324,7 @@ impl MainView {
             EngineState::Streaming => ("Syncing".to_owned(), theme.success),
             EngineState::Error(_) => ("Stopped".to_owned(), theme.danger),
         };
+        let setup = self.bridge.setup();
         let detail = match &self.status.state {
             EngineState::Streaming => {
                 let mut detail = format!(
@@ -300,13 +337,13 @@ impl MainView {
                 detail
             }
             EngineState::Starting => "Waiting for the screen and the bridge".into(),
-            _ if !self.bridge.is_paired() => "Pair with a bridge to begin".into(),
-            _ if self.bridge.entertainment_config_id.is_empty() => {
-                "Choose an entertainment area below".into()
-            }
-            _ => "Ready".into(),
+            EngineState::Idle | EngineState::Error(_) => match setup {
+                Setup::Unpaired => "Pair with a bridge to begin".into(),
+                Setup::NoArea => "Choose an entertainment area below".into(),
+                Setup::Ready => "Ready".into(),
+            },
         };
-        let can_start = self.bridge.is_paired() && !self.bridge.entertainment_config_id.is_empty();
+        let can_start = setup == Setup::Ready;
         let syncing = self.status.state.is_active();
 
         let body = div()
@@ -479,12 +516,12 @@ impl MainView {
                 "refresh-areas",
                 "Refresh",
                 ButtonKind::Plain,
-                !matches!(self.areas, Areas::Loading),
+                !matches!(self.areas, Areas::Loading(_)),
                 theme,
                 cx.listener(|this, _, _, cx| this.load_areas(cx)),
             ));
         let body = match &self.areas {
-            Areas::Unloaded | Areas::Loading => div()
+            Areas::Unloaded | Areas::Loading(_) => div()
                 .text_sm()
                 .text_color(theme.muted)
                 .child("Loading areas…")
@@ -560,7 +597,7 @@ impl MainView {
     }
 
     fn render_general(&self, theme: Theme, cx: &mut Context<Self>) -> impl IntoElement {
-        let item = self.autostart;
+        let item = self.autostart.shown();
         let mut card = card(theme).child(setting_row(
             "Start at login",
             "Opens in the tray when you log in.",

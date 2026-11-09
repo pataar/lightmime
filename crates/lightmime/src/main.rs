@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand};
 use lightmime_core::hue::{self, Bridge, ChannelColor, EntertainmentStream};
-use lightmime_core::{Engine, EngineState};
+use lightmime_core::{Engine, EngineState, Setup};
 
 use crate::settings::AppConfig;
 
@@ -193,7 +193,7 @@ fn import_lumux(config: &mut AppConfig, path: &Path) -> Result<()> {
 
 fn bridge(config: &AppConfig) -> Result<Bridge> {
     let bridge = &config.core.bridge;
-    if !bridge.is_paired() {
+    if bridge.setup() == Setup::Unpaired {
         bail!(
             "not paired yet: run `lightmime pair --host <bridge-ip>` or `lightmime import-lumux`"
         );
@@ -230,10 +230,10 @@ async fn use_area(config: &mut AppConfig, path: &Path, wanted: &str) -> Result<(
 
 async fn test(config: &AppConfig, seconds: u64) -> Result<()> {
     let bridge = bridge(config)?;
-    let area_id = config.core.bridge.entertainment_config_id.clone();
-    if area_id.is_empty() {
+    if config.core.bridge.setup() == Setup::NoArea {
         bail!("no entertainment area selected; run `lightmime use-area <name>`");
     }
+    let area_id = config.core.bridge.entertainment_config_id.clone();
     let area = bridge.entertainment_configuration(&area_id).await?;
     println!(
         "Starting '{}' ({} channels)",
@@ -374,14 +374,8 @@ async fn run(
         }
     }
     tracing::info!("shutting down");
-    engine.stop();
-    // Give the engine time to stop the entertainment area on the bridge.
-    let mut status = engine.subscribe();
-    let _ = tokio::time::timeout(
-        Duration::from_secs(5),
-        status.wait_for(|s| !s.state.is_active()),
-    )
-    .await;
+    // Release the entertainment area on the bridge, unless the bridge does not answer.
+    let _ = tokio::time::timeout(Duration::from_secs(5), engine.stop_and_wait()).await;
     let _ = shutdown_tx.send(true);
     if let Some(task) = mqtt_task {
         let _ = tokio::time::timeout(Duration::from_secs(3), task).await;

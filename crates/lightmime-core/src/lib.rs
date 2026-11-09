@@ -10,5 +10,5 @@ pub mod config;
 pub mod engine;
 pub mod hue;
 
-pub use config::{BridgeConfig, CaptureConfig, Config, SourceKind, SyncSettings};
+pub use config::{BridgeConfig, CaptureConfig, Config, Setup, SourceKind, SyncSettings};
 pub use engine::{Engine, EngineState, Status};

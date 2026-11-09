@@ -51,13 +51,6 @@ pub async fn spawn(engine: Engine, actions: UnboundedSender<Action>) -> Result<H
 }
 
 impl Tray {
-    fn syncing(&self) -> bool {
-        matches!(
-            self.status.state,
-            EngineState::Starting | EngineState::Streaming
-        )
-    }
-
     fn summary(&self) -> String {
         match &self.status.state {
             EngineState::Idle => "Not syncing".into(),
@@ -108,7 +101,7 @@ impl ksni::Tray for Tray {
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let syncing = self.syncing();
+        let syncing = self.status.state.is_active();
         vec![
             StandardItem {
                 label: self.summary(),
