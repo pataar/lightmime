@@ -14,7 +14,7 @@ description = "The lightmime window and tray icon"
 [dependencies]
 anyhow = "1.0.104"
 # async-io to match gpui and lightmime-core (see there).
-ashpd = { version = "0.13.13", default-features = false, features = ["background", "async-io"] }
+ashpd = { version = "0.14.0", default-features = false, features = ["background", "async-io"] }
 dirs = "7.0.0"
 # The crates.io `gpui` 0.2 no longer builds against current libc; gpui-pre is a newer snapshot of Zed's gpui.
 gpui = { package = "gpui-pre", version = "0.3.10" }
