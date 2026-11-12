@@ -123,7 +123,7 @@ pub struct MainView {
 
 impl MainView {
     pub fn new(shared: Shared, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let bridge = shared.bridge.lock().map(|b| b.clone()).unwrap_or_default();
+        let bridge = shared.bridge.lock().map_or_default(|b| b.clone());
         let host_text = bridge.host.clone();
         let host =
             cx.new(|cx| TextInput::new(host_text, "Bridge IP address, e.g. 192.168.1.20", cx));
@@ -132,10 +132,10 @@ impl MainView {
 
         let status_watcher = watch(shared.engine.subscribe(), cx, |this, s| this.status = s);
         let settings_watcher = watch(shared.engine.subscribe_settings(), cx, |this, s| {
-            this.settings = s
+            this.settings = s;
         });
         let colors_watcher = watch(shared.engine.subscribe_colors(), cx, |this, colors| {
-            this.colors = colors
+            this.colors = colors;
         });
 
         let mut view = Self {
@@ -220,7 +220,7 @@ impl MainView {
     }
 
     fn pair(&mut self, cx: &mut Context<Self>) {
-        let host = self.host.read(cx).text().trim().to_owned();
+        let host = hue::bridge_host(self.host.read(cx).text()).to_owned();
         if host.is_empty() {
             self.notice = Some("Enter the bridge's IP address first.".into());
             return;
@@ -327,14 +327,12 @@ impl MainView {
         let setup = self.bridge.setup();
         let detail = match &self.status.state {
             EngineState::Streaming => {
-                let mut detail = format!(
-                    "{} · {} lights · {:.0} fps",
+                let latency = (self.status.latency)
+                    .map_or_default(|latency| format!(" · ~{} ms", latency.as_millis().max(1)));
+                format!(
+                    "{} · {} lights · {:.0} fps{latency}",
                     self.status.area, self.status.channels, self.status.fps
-                );
-                if let Some(latency) = self.status.latency {
-                    detail += &format!(" · ~{} ms", latency.as_millis().max(1));
-                }
-                detail
+                )
             }
             EngineState::Starting => "Waiting for the screen and the bridge".into(),
             EngineState::Idle | EngineState::Error(_) => match setup {
@@ -589,7 +587,7 @@ impl MainView {
                     self.slider_bounds[index].clone(),
                     theme,
                     cx.listener(move |this, fraction: &f32, _, cx| {
-                        this.set_slider(index, *fraction, cx)
+                        this.set_slider(index, *fraction, cx);
                     }),
                 ))
                 .child(div().text_xs().text_color(theme.muted).child(spec.hint))
@@ -611,7 +609,7 @@ impl MainView {
                         enabled,
                         start_syncing: enabled && item.start_syncing,
                     };
-                    this.set_autostart(next, cx)
+                    this.set_autostart(next, cx);
                 }),
             ),
             theme,
@@ -629,7 +627,7 @@ impl MainView {
                             start_syncing: !item.start_syncing,
                             ..item
                         };
-                        this.set_autostart(next, cx)
+                        this.set_autostart(next, cx);
                     }),
                 ),
                 theme,
@@ -804,7 +802,7 @@ fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
             .size(px(GLOW))
             .rounded_full()
             .shadow(vec![
-                BoxShadow::new(px(0.), px(0.), light_colour(color).opacity(0.5))
+                BoxShadow::new(px(0.), px(0.), light_colour(*color).opacity(0.5))
                     .blur_radius(px(48.))
                     .spread_radius(px(28.)),
             ])
@@ -820,7 +818,7 @@ fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
             .rounded_full()
             .border_2()
             .border_color(hsla(0., 0., 0., 0.6))
-            .bg(light_colour(color))
+            .bg(light_colour(*color))
     });
     let picture = screen_edges(colors).map(|[left, right]| {
         linear_gradient(
@@ -847,14 +845,14 @@ fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
                     div()
                         .size_full()
                         .rounded(px(2.))
-                        .when_some(picture, |this, picture| this.bg(picture))
+                        .when_some(picture, Styled::bg)
                         .opacity(0.7),
                 ),
         )
         .child(over_screen().children(dots))
 }
 
-fn light_colour(color: &ChannelColor) -> Hsla {
+fn light_colour(color: ChannelColor) -> Hsla {
     let channel = |i: usize| f32::from(color.rgb[i]) / f32::from(u16::MAX);
     Hsla::from(Rgba {
         r: channel(0),
@@ -897,7 +895,7 @@ fn link(theme: Theme, label: &'static str, url: &'static str) -> impl IntoElemen
         .id(label)
         .text_color(theme.accent)
         .cursor_pointer()
-        .hover(|style| style.underline())
+        .hover(Styled::underline)
         .on_click(move |_, _, cx| cx.open_url(url))
         .child(label)
 }
@@ -936,7 +934,7 @@ impl MainView {
         self.status = Status {
             state: EngineState::Streaming,
             fps: 30.0,
-            latency: Some(std::time::Duration::from_millis(3)),
+            latency: Some(Duration::from_millis(3)),
             area: "Living room".into(),
             channels: 6,
         };

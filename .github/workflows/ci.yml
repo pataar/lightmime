@@ -14,6 +14,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Fails on any warning from our crates: rustc, clippy, rustdoc and Cargo's own lints (unused dependencies).
+  CARGO_BUILD_WARNINGS: deny
 
 jobs:
   check:
@@ -31,7 +33,9 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features
       # The headless build (no window or tray) must keep compiling.
-      - run: cargo clippy -p lightmime --no-default-features -- -D warnings
+      - run: cargo clippy -p lightmime --no-default-features
+      # docs.rs builds the library docs; broken links and bad markdown fail here first.
+      - run: cargo doc --no-deps --all-features
       - run: cargo test --all-features

@@ -1,11 +1,12 @@
 //! The sync engine: owns the capture and the bridge session, and runs the
 //! streaming loop. Frontends talk to it through an [`Engine`] handle.
 //!
-//! The engine is an actor. Its [`Phase`] is the state machine; the
+//! The engine is an actor. Its `Phase` is the state machine; the
 //! [`EngineState`] it publishes is derived from it, and only the actor writes
 //! that. Opening a session (bridge REST calls, the portal's screen picker) runs
 //! as a separate task, so `stop` and `set_bridge` are heard while it runs.
 
+use std::mem::DropGuard;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -254,6 +255,10 @@ impl Then {
     /// Fold in a request that arrives while starting. Anything but `Run`
     /// cancels the opening, which cannot be taken back, so a start after a
     /// stop has to open again.
+    #[expect(
+        clippy::match_same_arms,
+        reason = "one arm per case reads as the transition table"
+    )]
     fn on(self, request: Request) -> Self {
         match (self, request) {
             (Self::Run, Request::Start) => Self::Run,
@@ -649,7 +654,7 @@ impl Opening {
 
         let zones: Vec<Zone> = area.channels.iter().map(Zone::from_channel).collect();
         self.status.send_modify(|s| {
-            s.area = area.metadata.name.clone();
+            s.area.clone_from(&area.metadata.name);
             s.channels = zones.len();
         });
 
@@ -707,26 +712,35 @@ struct StreamWorker {
 }
 
 impl StreamWorker {
-    /// Stream until stopped; tells the actor when it connects and when it fails.
+    /// Stream until stopped; tells the actor when it connects and when it
+    /// fails, a panic included.
     fn run(mut self, session_id: u64, commands: &mpsc::WeakUnboundedSender<Command>) {
         let send = |command| {
             if let Some(commands) = commands.upgrade() {
                 let _ = commands.send(command);
             }
         };
-        let result = self.stream(|latency| {
-            send(Command::Connected {
-                session_id,
-                latency,
+        let colors = Arc::clone(&self.colors);
+        // Reports the outcome when the thread ends. A panic unwinds past the
+        // assignment below and leaves the failure in place, so the actor still
+        // releases the area instead of showing a dead session as streaming.
+        let mut outcome = DropGuard::new(
+            Err("the streaming thread panicked".to_owned()),
+            |outcome: Result<(), String>| {
+                colors.send_replace(Vec::new());
+                if let Err(reason) = outcome {
+                    send(Command::StreamFailed { session_id, reason });
+                }
+            },
+        );
+        *outcome = self
+            .stream(|latency| {
+                send(Command::Connected {
+                    session_id,
+                    latency,
+                });
             })
-        });
-        self.colors.send_replace(Vec::new());
-        if let Err(e) = result {
-            send(Command::StreamFailed {
-                session_id,
-                reason: format!("{e:#}"),
-            });
-        }
+            .map_err(|e| format!("{e:#}"));
     }
 
     fn stream(&mut self, connected: impl FnOnce(Duration)) -> Result<()> {
@@ -770,7 +784,7 @@ impl StreamWorker {
                 window = Instant::now();
             }
 
-            let frame_time = Duration::from_secs_f64(1.0 / settings.fps.max(1) as f64);
+            let frame_time = Duration::from_secs_f64(1.0 / f64::from(settings.fps.max(1)));
             if let Some(remaining) = frame_time.checked_sub(tick.elapsed()) {
                 std::thread::sleep(remaining);
             }
@@ -835,7 +849,7 @@ fn wipe(
             ChannelColor {
                 channel_id: to.channel_id,
                 rgb: std::array::from_fn(|i| {
-                    let (a, b) = (from.rgb[i] as f32, to.rgb[i] as f32);
+                    let (a, b) = (f32::from(from.rgb[i]), f32::from(to.rgb[i]));
                     (a + (b - a) * level).round() as u16
                 }),
             }
@@ -903,7 +917,7 @@ mod tests {
             panic!("the first frame starts the wipe");
         };
         assert_eq!(Fade::In(since).next(true), Fade::In(since));
-        let long_ago = Instant::now() - FADE;
+        let long_ago = Instant::now().checked_sub(FADE).unwrap();
         assert_eq!(Fade::In(long_ago).next(true), Fade::Live);
         assert_eq!(Fade::Live.next(true), Fade::Live);
     }

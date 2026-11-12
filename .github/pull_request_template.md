@@ -9,6 +9,7 @@
 ## Checklist
 
 - [ ] The PR title follows Conventional Commits (`feat:`, `fix:`, `docs:` …)
-- [ ] `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings` and `cargo test --all-features` pass
+- [ ] `cargo fmt --check`, `cargo clippy --all-targets --all-features`, `cargo doc --no-deps --all-features` and
+      `cargo test --all-features` pass with `CARGO_BUILD_WARNINGS=deny`
 - [ ] Docs in `docs/src/` are updated (and the screenshots, if the window changed)
 - [ ] No bridge keys, passwords or config files in code, tests or logs

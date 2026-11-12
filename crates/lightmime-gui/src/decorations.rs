@@ -52,10 +52,10 @@ pub fn frame(
         .bg(theme.bg)
         .border_color(theme.border)
         .cursor(CursorStyle::Arrow)
-        .when(!tiling.top, |this| this.border_t_1())
-        .when(!tiling.bottom, |this| this.border_b_1())
-        .when(!tiling.left, |this| this.border_l_1())
-        .when(!tiling.right, |this| this.border_r_1())
+        .when(!tiling.top, Styled::border_t_1)
+        .when(!tiling.bottom, Styled::border_b_1)
+        .when(!tiling.left, Styled::border_l_1)
+        .when(!tiling.right, Styled::border_r_1)
         .when(rounded, |this| {
             this.rounded(RADIUS).shadow(vec![
                 BoxShadow::new(px(0.), px(1.), hsla(0., 0., 0., 0.35)).blur_radius(INSET / 2.),
@@ -164,7 +164,7 @@ fn close_button(theme: Theme) -> impl IntoElement {
         .child(
             canvas(
                 |_, _, _| {},
-                move |bounds, _, window, _| {
+                move |bounds, (), window, _| {
                     let mut cross = PathBuilder::stroke(px(1.5));
                     cross.move_to(bounds.origin);
                     cross.line_to(bounds.bottom_right());

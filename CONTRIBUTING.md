@@ -21,11 +21,16 @@ cargo run -- --config /tmp/lightmime.toml gui   # or with a scratch one
 All of these must pass; CI runs the same set:
 
 ```sh
+export CARGO_BUILD_WARNINGS=deny   # any warning fails, as in CI
 cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo clippy -p lightmime --no-default-features -- -D warnings
+cargo clippy --all-targets --all-features
+cargo clippy -p lightmime --no-default-features
+cargo doc --no-deps --all-features
 cargo test --all-features
 ```
+
+- Lints are set once for the workspace in `Cargo.toml` (`[workspace.lints]`) and `clippy.toml`. Silence one with
+  `#[expect(lint, reason = "...")]`, never `#[allow]`; the build says when an `expect` is no longer needed.
 
 - New logic comes with a test where it can have one; colour mapping and parsing can, streaming to a bridge can't.
 - Every new dependency gets a one-line comment in `Cargo.toml` saying why it is needed, when that is not obvious.

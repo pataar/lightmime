@@ -10,7 +10,6 @@ rust-version.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "Screen capture, colour mapping and Hue Entertainment streaming for lightmime"
-readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.104"
@@ -30,3 +29,6 @@ tracing = "0.1.44"
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "signal"] }
+
+[lints]
+workspace = true

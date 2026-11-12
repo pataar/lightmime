@@ -65,7 +65,7 @@ pub async fn pair(host: &str, device_type: &str) -> Result<Credentials, PairErro
         .ok_or_else(|| anyhow!("unexpected pairing response: {response}"))?;
     if let Some(error) = entry.get("error") {
         // Error type 101: link button not pressed.
-        if error.get("type").and_then(|t| t.as_u64()) == Some(101) {
+        if error.get("type").and_then(serde_json::Value::as_u64) == Some(101) {
             return Err(PairError::LinkButtonNotPressed);
         }
         return Err(anyhow!("bridge refused pairing: {error}").into());
@@ -86,6 +86,17 @@ pub async fn pair(host: &str, device_type: &str) -> Result<Credentials, PairErro
     })
 }
 
+/// The bridge's address as typed or pasted, so `https://192.168.1.20/` (copied
+/// from a browser) pairs like `192.168.1.20`: trims whitespace, the scheme
+/// and a trailing slash.
+pub fn bridge_host(input: &str) -> &str {
+    input
+        .trim()
+        .trim_prefix("https://")
+        .trim_prefix("http://")
+        .trim_suffix('/')
+}
+
 /// A bridge reported by Signify's discovery service.
 #[derive(Debug, Clone, Deserialize)]
 pub struct DiscoveredBridge {
@@ -99,7 +110,7 @@ pub struct DiscoveredBridge {
 /// limited, so call it on request rather than in a loop.
 pub async fn discover() -> Result<Vec<DiscoveredBridge>> {
     reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
+        .timeout(Duration::from_secs(10))
         .build()
         .context("building HTTP client")?
         .get("https://discovery.meethue.com/")
@@ -118,7 +129,7 @@ pub async fn discover() -> Result<Vec<DiscoveredBridge>> {
 fn http_client() -> Result<reqwest::Client> {
     reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .timeout(std::time::Duration::from_secs(10))
+        .timeout(Duration::from_secs(10))
         .build()
         .context("building HTTP client")
 }
@@ -377,5 +388,18 @@ impl Bridge {
         } else {
             format!("{base}/{id}")
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bridge_host;
+
+    #[test]
+    fn bridge_host_takes_pasted_urls() {
+        assert_eq!(bridge_host("192.168.1.20"), "192.168.1.20");
+        assert_eq!(bridge_host(" https://192.168.1.20/ "), "192.168.1.20");
+        assert_eq!(bridge_host("http://hue.local"), "hue.local");
+        assert_eq!(bridge_host(""), "");
     }
 }

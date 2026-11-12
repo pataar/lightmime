@@ -84,8 +84,7 @@ impl UiFont {
         let family = PREFERRED
             .iter()
             .find(|name| installed.iter().any(|font| font == *name))
-            .map(|name| SharedString::from(*name))
-            .unwrap_or_else(|| ".SystemUIFont".into());
+            .map_or_else(|| ".SystemUIFont".into(), |name| SharedString::from(*name));
         Self(family)
     }
 }
