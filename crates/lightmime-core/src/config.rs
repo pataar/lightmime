@@ -116,6 +116,7 @@ impl Default for SyncSettings {
 
 impl SyncSettings {
     /// Clamp every value to its valid range.
+    #[must_use = "sanitized returns the clamped settings; it does not change them in place"]
     pub fn sanitized(mut self) -> Self {
         // NaN passes through `clamp`, poisons the smoothed colours and
         // survives a round trip through the config file, so reset it.

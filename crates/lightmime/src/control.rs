@@ -227,7 +227,7 @@ pub async fn send(request: Request) -> Result<()> {
 async fn remote(conn: &Connection) -> Result<RemoteProxy<'static>> {
     // Uncached: `status` reads fresh values after the owner changes.
     Ok(RemoteProxy::builder(conn)
-        .cache_properties(zbus::proxy::CacheProperties::No)
+        .cache_properties(proxy::CacheProperties::No)
         .build()
         .await?)
 }
@@ -313,17 +313,26 @@ pub async fn status(follow: bool, print: impl Fn(&Snapshot)) -> Result<()> {
         .await
         .context("connecting to the session bus")?;
     let remote = remote(&conn).await?;
-    if !follow {
-        print(&snapshot(&conn, &remote).await);
-        return Ok(());
+    if follow {
+        // `Result<!>`: it returns only with an error, so this never falls through.
+        follow_status(&conn, &remote, print).await?;
     }
+    print(&snapshot(&conn, &remote).await);
+    Ok(())
+}
 
+/// Print the status, then again on every change, until the session bus goes away.
+async fn follow_status(
+    conn: &Connection,
+    remote: &RemoteProxy<'static>,
+    print: impl Fn(&Snapshot),
+) -> Result<!> {
     let name = WellKnownName::try_from(BUS_NAME)?;
-    let mut owners = DBusProxy::new(&conn)
+    let mut owners = DBusProxy::new(conn)
         .await?
         .receive_name_owner_changed_with_args(&[(0, BUS_NAME)])
         .await?;
-    let mut changes = PropertiesProxy::builder(&conn)
+    let mut changes = PropertiesProxy::builder(conn)
         .destination(name)?
         .path(OBJECT_PATH)?
         .build()
@@ -334,7 +343,7 @@ pub async fn status(follow: bool, print: impl Fn(&Snapshot)) -> Result<()> {
 
     let mut last = None;
     loop {
-        let now = snapshot(&conn, &remote).await;
+        let now = snapshot(conn, remote).await;
         if last.as_ref() != Some(&now) {
             print(&now);
             last = Some(now);

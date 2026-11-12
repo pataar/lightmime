@@ -38,3 +38,6 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 # Remote control on the session bus. tokio, as the tray's ksni already enables it; ashpd adds async-io.
 zbus = { version = "5.19.0", default-features = false, features = ["tokio"] }
+
+[lints]
+workspace = true

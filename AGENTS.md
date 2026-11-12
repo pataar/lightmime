@@ -173,8 +173,10 @@ that; `.mcp.json` registers its MCP server.
 ```sh
 cargo build                              # debug build
 cargo test --all-features                # unit tests (colour mapping, hex parsing)
-cargo clippy --all-targets --all-features -- -D warnings          # must be warning-free
-cargo clippy -p lightmime --no-default-features -- -D warnings    # headless build
+export CARGO_BUILD_WARNINGS=deny                  # as CI: any warning fails, Cargo's and rustdoc's too
+cargo clippy --all-targets --all-features         # must be warning-free
+cargo clippy -p lightmime --no-default-features   # headless build
+cargo doc --no-deps --all-features                # rustdoc lints (docs.rs builds core and gui)
 cargo fmt                                # rustfmt; run before committing
 cargo test -p lightmime-gui screenshots -- --ignored              # docs screenshots (GPU)
 mdbook serve docs                        # preview the docs
@@ -220,7 +222,14 @@ packaging-only fix needs a `pkgrel` bump pushed by hand with `publish.sh`.
 
 ## Conventions
 
-- Rust 2024 edition, workspace dependencies declared per crate.
+- Rust 2024 edition, workspace dependencies declared per crate. `rust-version` follows
+  `rust-toolchain.toml`; the code uses what that release stabilised (`!`, `DropGuard`, …).
+- Lints live in `[workspace.lints]` (root `Cargo.toml`: clippy pedantic with a few allows,
+  some restriction lints, Cargo's own lints) and `clippy.toml`; every crate has
+  `[lints] workspace = true`. Silence a lint with `#[expect(..., reason = "...")]`, not `#[allow]`.
+  No `unsafe` (forbidden) and no `unwrap()` outside tests.
+- `.cargo/config.toml` keeps `cargo update`/`cargo add` off crates.io releases younger than
+  3 days, matching Dependabot's cooldown.
 - Errors: `anyhow` with `.context()` describing the failed step; `thiserror`
   only where callers match on variants (`PairError`).
 - Logging via `tracing`; the binary honours `RUST_LOG`.

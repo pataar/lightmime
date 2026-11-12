@@ -116,7 +116,7 @@ async fn main() -> Result<()> {
     let mut config = AppConfig::load(&config_path)?;
 
     match cli.command {
-        Command::Pair { host } => pair(&mut config, &config_path, host).await,
+        Command::Pair { host } => pair(&mut config, &config_path, &host).await,
         Command::ImportLumux => import_lumux(&mut config, &config_path),
         Command::Areas => areas(&config).await,
         Command::UseArea { area } => use_area(&mut config, &config_path, &area).await,
@@ -147,14 +147,15 @@ fn device_name() -> String {
     )
 }
 
-async fn pair(config: &mut AppConfig, path: &Path, host: String) -> Result<()> {
+async fn pair(config: &mut AppConfig, path: &Path, host: &str) -> Result<()> {
+    let host = hue::bridge_host(host);
     let device = device_name();
     println!(
         "Press the link button on the Hue bridge (waiting {} s)...",
         hue::PAIR_TIMEOUT.as_secs()
     );
-    let credentials = hue::pair_waiting(&host, &device).await?;
-    config.core.bridge.host = host;
+    let credentials = hue::pair_waiting(host, &device).await?;
+    host.clone_into(&mut config.core.bridge.host);
     config.core.bridge.app_key = credentials.app_key;
     config.core.bridge.client_key = credentials.client_key;
     config.save(path)?;
@@ -222,7 +223,11 @@ async fn use_area(config: &mut AppConfig, path: &Path, wanted: &str) -> Result<(
         .iter()
         .find(|a| a.id == wanted || a.metadata.name.eq_ignore_ascii_case(wanted))
         .ok_or_else(|| anyhow!("no entertainment area called {wanted:?}; see `lightmime areas`"))?;
-    config.core.bridge.entertainment_config_id = area.id.clone();
+    config
+        .core
+        .bridge
+        .entertainment_config_id
+        .clone_from(&area.id);
     config.save(path)?;
     println!("Using '{}' ({})", area.metadata.name, area.id);
     Ok(())
@@ -275,6 +280,10 @@ async fn test(config: &AppConfig, seconds: u64) -> Result<()> {
     Ok(())
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "the textbook names for the HSV to RGB conversion"
+)]
 fn hue_to_rgb(h: f32) -> [u16; 3] {
     let h = h.fract() * 6.0;
     let x = 1.0 - (h % 2.0 - 1.0).abs();
@@ -385,7 +394,14 @@ async fn run(
 
 /// Another lightmime owns the bus name. Starting a second one would fight it
 /// for the entertainment area, so hand the request to the running one.
-#[cfg_attr(not(feature = "gui"), allow(unused_variables))]
+#[cfg_attr(
+    not(feature = "gui"),
+    expect(
+        unused_variables,
+        clippy::unused_async,
+        reason = "only the window hands over to a running instance"
+    )
+)]
 async fn already_running(start: bool, frontend: &Frontend) -> Result<()> {
     match frontend {
         Frontend::Headless => bail!(

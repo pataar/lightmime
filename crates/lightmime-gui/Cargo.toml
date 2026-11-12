@@ -30,3 +30,6 @@ gpui = { package = "gpui-pre", version = "0.3.10", features = ["test-support"] }
 gpui_platform = { package = "gpui-pre-platform", version = "0.3.10", default-features = false, features = ["wayland", "x11", "test-support"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 serde_json = "1.0.154"
+
+[lints]
+workspace = true

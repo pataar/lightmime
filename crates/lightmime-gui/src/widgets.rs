@@ -179,7 +179,7 @@ pub fn slider(
         .items_center()
         .cursor_pointer()
         .child(
-            canvas(move |b, _, _| bounds.set(b), |_, _, _, _| {})
+            canvas(move |b, _, _| bounds.set(b), |_, (), _, _| {})
                 .absolute()
                 .top_0()
                 .left_0()
@@ -249,7 +249,7 @@ pub fn switch(
         .p(px(2.))
         .rounded_full()
         .flex()
-        .when(on, |this| this.justify_end())
+        .when(on, Styled::justify_end)
         .bg(if on { theme.accent } else { theme.border })
         .cursor_pointer()
         .on_click(on_click)

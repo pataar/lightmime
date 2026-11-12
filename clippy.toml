@@ -1,0 +1,4 @@
+# Tests may unwrap; production code uses `?`, `expect` with a reason, or handles the error.
+allow-unwrap-in-tests = true
+# Product and protocol names in doc comments, not code.
+doc-valid-idents = ["..", "AppIndicator", "GStreamer", "PipeWire", "ScreenCast", "StatusNotifierItem"]

@@ -5,9 +5,11 @@ use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result, anyhow};
-use ashpd::desktop::PersistMode;
-use ashpd::desktop::Session;
-use ashpd::desktop::screencast::{CursorMode, Screencast, SelectSourcesOptions, SourceType};
+use ashpd::desktop::screencast::{
+    CursorMode, OpenPipeWireRemoteOptions, Screencast, SelectSourcesOptions, SourceType,
+    StartCastOptions,
+};
+use ashpd::desktop::{CreateSessionOptions, PersistMode, Session};
 use ashpd::enumflags2::BitFlags;
 use gstreamer as gst;
 use gstreamer::prelude::*;
@@ -69,7 +71,7 @@ impl ScreenCapture {
             .await
             .context("connecting to the ScreenCast portal")?;
         let session = portal
-            .create_session(Default::default())
+            .create_session(CreateSessionOptions::default())
             .await
             .context("creating a screen-cast session")?;
         // The portal keeps a session open until it is closed, not when it is dropped.
@@ -120,7 +122,7 @@ impl ScreenCapture {
             .await
             .context("selecting capture sources")?;
         let streams = portal
-            .start(session, None, Default::default())
+            .start(session, None, StartCastOptions::default())
             .await
             .context("starting the screen cast")?
             .response()
@@ -133,7 +135,7 @@ impl ScreenCapture {
         let new_token = streams.restore_token().map(str::to_owned);
 
         let fd = portal
-            .open_pipe_wire_remote(session, Default::default())
+            .open_pipe_wire_remote(session, OpenPipeWireRemoteOptions::default())
             .await
             .context("opening the PipeWire remote")?;
 

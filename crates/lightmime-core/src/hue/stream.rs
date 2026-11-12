@@ -1,4 +1,4 @@
-//! Hue Entertainment streaming: HueStream v2 messages over DTLS 1.2 with a
+//! Hue Entertainment streaming: `HueStream` v2 messages over DTLS 1.2 with a
 //! pre-shared key, sent to UDP port 2100 on the bridge.
 //!
 //! This is blocking code; run it on a dedicated thread.

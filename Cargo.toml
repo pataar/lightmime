@@ -9,6 +9,43 @@ edition = "2024"
 repository = "https://github.com/pataar/lightmime"
 license = "MIT OR Apache-2.0"
 homepage = "https://lightmime.pataar.nl"
-rust-version = "1.99"
+rust-version = "1.100"
 keywords = ["philips-hue", "ambilight", "wayland", "pipewire", "screen-capture"]
 categories = ["multimedia", "command-line-utilities"]
+
+# Shared by every crate (`[lints] workspace = true`). CI turns warnings into errors with
+# `CARGO_BUILD_WARNINGS=deny`, which also covers the Cargo and rustdoc lints below.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+unused_lifetimes = "warn"
+redundant_lifetimes = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# Colour maths converts between u8, u16 and f32 everywhere, always within range.
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+# Errors are anyhow chains whose context says what failed.
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+# A `match` with a comment per arm often reads better than `if let ... else`.
+single_match_else = "allow"
+# Hex colours and published conversion constants read better unsplit.
+unreadable_literal = "allow"
+# From the restriction group: keep what is already true of the code.
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+dbg_macro = "warn"
+str_to_string = "warn"
+todo = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+
+[workspace.lints.rustdoc]
+unescaped_backticks = "warn"
+
+[workspace.lints.cargo]
+pedantic = { level = "warn", priority = -1 }

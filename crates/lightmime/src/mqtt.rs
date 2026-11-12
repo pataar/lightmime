@@ -126,7 +126,8 @@ impl MqttBridge {
         let (client, mut events) = AsyncClient::new(options, 32);
 
         let mut status_rx = self.engine.subscribe();
-        let mut last_fps_publish = Instant::now() - FPS_INTERVAL;
+        // None until the first publish; `Instant::now() - FPS_INTERVAL` panics in the first seconds after boot.
+        let mut last_fps_publish: Option<Instant> = None;
         let mut save_pending = false;
         /* rumqttc only drains its request queue while connected, so publishing during an outage fills it and the next
         publish blocks this loop, which then never polls the event loop to reconnect. `announce` catches up instead. */
@@ -200,11 +201,11 @@ impl MqttBridge {
                         continue;
                     }
                     let status = status_rx.borrow_and_update().clone();
-                    let publish_fps = last_fps_publish.elapsed() >= FPS_INTERVAL
+                    let publish_fps = last_fps_publish.is_none_or(|t| t.elapsed() >= FPS_INTERVAL)
                         || status.state != EngineState::Streaming;
                     self.publish_status(&client, &status, publish_fps).await?;
                     if publish_fps {
-                        last_fps_publish = Instant::now();
+                        last_fps_publish = Some(Instant::now());
                     }
                 }
             }

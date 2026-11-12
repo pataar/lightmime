@@ -5,6 +5,6 @@ pub mod stream;
 
 pub use api::{
     Bridge, Channel, Credentials, DiscoveredBridge, EntertainmentConfiguration, PAIR_TIMEOUT,
-    PairError, Position, discover, pair, pair_waiting,
+    PairError, Position, bridge_host, discover, pair, pair_waiting,
 };
 pub use stream::{ChannelColor, EntertainmentStream};

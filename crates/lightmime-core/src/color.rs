@@ -56,6 +56,10 @@ pub struct Zone {
 }
 
 impl Zone {
+    #[expect(
+        clippy::manual_midpoint,
+        reason = "maps -1..1 to 0..1, like `y` below; `midpoint` would hide that"
+    )]
     pub fn from_channel(channel: &Channel) -> Self {
         Self {
             channel_id: channel.channel_id,
@@ -141,7 +145,7 @@ pub fn xy_to_rgb(x: f32, y: f32, brightness: f32) -> [u16; 3] {
     .map(|c| c.max(0.0));
     let peak = rgb.iter().copied().fold(f32::EPSILON, f32::max);
     let brightness = brightness.clamp(0.0, 1.0);
-    rgb.map(|c| (to_u16(c / peak) as f32 * brightness).round() as u16)
+    rgb.map(|c| (f32::from(to_u16(c / peak)) * brightness).round() as u16)
 }
 
 /// The bridge expects gamma-encoded values, like what the screen shows.
@@ -201,7 +205,7 @@ mod tests {
         assert_eq!(out[0].channel_id, 3);
         assert_eq!(out[0].rgb[0], 65535);
         assert_eq!(out[0].rgb[1], 0);
-        assert!((out[0].rgb[2] as i32 - 128 * 257).abs() < 300);
+        assert!((i32::from(out[0].rgb[2]) - 128 * 257).abs() < 300);
     }
 
     #[test]
