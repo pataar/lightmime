@@ -9,7 +9,7 @@
 The window follows your desktop's light or dark style. From top to bottom:
 
 - **Status**: while syncing, a map of the area: the screen with a dot for each light where it samples the
-  picture, in the colour it shows right now. Below it, whether lightmime is syncing, to which area, to how many lights and at what frame rate, and the
+  picture, in the colour it shows right now; hover a dot to see which light it is. Below it, whether lightmime is syncing, to which area, to how many lights and at what frame rate, and the
   **Start**/**Stop** button. After an error, the message shows here; Start tries again.
 - **Bridge**: [pairing](bridge.md#pairing), or the paired bridge and **Forget**.
 - **Entertainment area**: the bridge's [areas](bridge.md#entertainment-areas); click one to sync to it. Switching
