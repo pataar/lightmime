@@ -14,7 +14,7 @@ description = "Screen capture, colour mapping and Hue Entertainment streaming fo
 [dependencies]
 anyhow = "1.0.104"
 # async-io rather than tokio: gpui uses ashpd with async-io, and Cargo unifies the two into one build that refuses both.
-ashpd = { version = "0.13.13", default-features = false, features = ["screencast", "async-io"] }
+ashpd = { version = "0.14.0", default-features = false, features = ["screencast", "async-io"] }
 gstreamer = "0.25.4"
 gstreamer-app = "0.25.2"
 gstreamer-video = "0.25.4"

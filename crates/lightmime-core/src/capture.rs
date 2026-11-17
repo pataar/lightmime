@@ -10,7 +10,6 @@ use ashpd::desktop::screencast::{
     StartCastOptions,
 };
 use ashpd::desktop::{CreateSessionOptions, PersistMode, Session};
-use ashpd::enumflags2::BitFlags;
 use gstreamer as gst;
 use gstreamer::prelude::*;
 use gstreamer_app as gst_app;
@@ -106,15 +105,15 @@ impl ScreenCapture {
         restore_token: Option<&str>,
     ) -> Result<Started> {
         let source = match config.source {
-            SourceKind::Monitor => SourceType::Monitor,
-            SourceKind::Window => SourceType::Window,
+            SourceKind::Monitor => SourceType::MONITOR,
+            SourceKind::Window => SourceType::WINDOW,
         };
         portal
             .select_sources(
                 session,
                 SelectSourcesOptions::default()
-                    .set_cursor_mode(CursorMode::Hidden)
-                    .set_sources(BitFlags::from(source))
+                    .set_cursor_mode(CursorMode::HIDDEN)
+                    .set_sources(source)
                     .set_multiple(false)
                     .set_persist_mode(PersistMode::ExplicitlyRevoked)
                     .set_restore_token(restore_token),

@@ -59,7 +59,7 @@ pub async fn claim(engine: Engine, show: Option<UnboundedSender<()>>) -> Claim {
         return Claim::NoBus;
     }
     match conn
-        .request_name_with_flags(BUS_NAME, RequestNameFlags::DoNotQueue.into())
+        .request_name_with_flags(BUS_NAME, RequestNameFlags::DO_NOT_QUEUE)
         .await
     {
         Ok(RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner) => {}
@@ -333,8 +333,8 @@ async fn follow_status(
         .receive_name_owner_changed_with_args(&[(0, BUS_NAME)])
         .await?;
     let mut changes = PropertiesProxy::builder(conn)
-        .destination(name)?
-        .path(OBJECT_PATH)?
+        .destination(name)
+        .path(OBJECT_PATH)
         .build()
         .await?
         .receive_properties_changed()
