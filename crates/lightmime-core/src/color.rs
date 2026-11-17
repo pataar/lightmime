@@ -83,8 +83,8 @@ impl Frame {
 }
 
 /// Brightest value (sRGB, 0..255) a pixel of a black bar may have. Video black is 0, or 16 when a
-/// player gets the range wrong; compression noise adds a little.
-const DARK: u8 = 24;
+/// player shows limited-range video as full range.
+const DARK: u8 = 16;
 
 /// How long new bars must stay before the lights follow them, in seconds. A dark edge in the
 /// picture comes and goes; bars of a film stay.
