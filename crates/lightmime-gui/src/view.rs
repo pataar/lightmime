@@ -404,7 +404,7 @@ impl MainView {
             card(theme)
                 .p_1()
                 .gap_0()
-                .child(room_map(&self.colors))
+                .child(room_map(&self.colors, &self.status.lights))
                 .child(body.p_3())
         }
     }
@@ -776,10 +776,12 @@ fn card(theme: Theme) -> gpui::Div {
 }
 
 /// The screen in a dark room, with each light as a dot where it samples the screen and the
-/// glow it throws on the wall behind.
-fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
+/// glow it throws on the wall behind. Hovering a dot names its light.
+fn room_map(colors: &[(Zone, ChannelColor)], names: &[String]) -> impl IntoElement {
     const SCREEN: (f32, f32) = (192., 108.);
     const DOT: f32 = 10.;
+    /// Larger than the dot, so it is easy to hover.
+    const TARGET: f32 = 20.;
     const GLOW: f32 = 24.;
     let over_screen = || {
         div()
@@ -807,18 +809,33 @@ fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
                     .spread_radius(px(28.)),
             ])
     });
-    let dots = colors.iter().map(|(zone, color)| {
+    let dots = colors.iter().enumerate().map(|(i, (zone, color))| {
+        let name: Option<SharedString> = names.get(i).map(|name| name.clone().into());
         div()
+            .id(("light", i))
             .absolute()
             .left(relative(zone.x))
             .top(relative(zone.y))
-            .ml(px(-DOT / 2.))
-            .mt(px(-DOT / 2.))
-            .size(px(DOT))
+            .ml(px(-TARGET / 2.))
+            .mt(px(-TARGET / 2.))
+            .size(px(TARGET))
             .rounded_full()
-            .border_2()
-            .border_color(hsla(0., 0., 0., 0.6))
-            .bg(light_colour(*color))
+            .flex()
+            .items_center()
+            .justify_center()
+            .when_some(name, |this, name| {
+                this.hover(|style| style.bg(hsla(0., 0., 1., 0.25)))
+                    .tooltip_show_delay(TOOLTIP_DELAY)
+                    .tooltip(move |_, cx| cx.new(|_| LightTooltip(name.clone())).into())
+            })
+            .child(
+                div()
+                    .size(px(DOT))
+                    .rounded_full()
+                    .border_2()
+                    .border_color(hsla(0., 0., 0., 0.6))
+                    .bg(light_colour(*color)),
+            )
     });
     let picture = screen_edges(colors).map(|[left, right]| {
         linear_gradient(
@@ -850,6 +867,30 @@ fn room_map(colors: &[(Zone, ChannelColor)]) -> impl IntoElement {
                 ),
         )
         .child(over_screen().children(dots))
+}
+
+/// Short, as the dots are small and you look for one light after another.
+const TOOLTIP_DELAY: Duration = Duration::from_millis(150);
+
+/// The name of a light, shown over its dot in the room map.
+struct LightTooltip(SharedString);
+
+impl Render for LightTooltip {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = Theme::of(window, cx);
+        div()
+            .font_family(cx.global::<UiFont>().0.clone())
+            .px_2()
+            .py_1()
+            .rounded_md()
+            .border_1()
+            .border_color(theme.border)
+            .bg(theme.surface)
+            .text_color(theme.text)
+            .text_xs()
+            .shadow_md()
+            .child(self.0.clone())
+    }
 }
 
 fn light_colour(color: ChannelColor) -> Hsla {
@@ -931,14 +972,24 @@ impl MainView {
             area("living-room", "Living room", 6),
             area("desk", "Desk", 2),
         ]);
-        self.status = Status {
-            state: EngineState::Streaming,
-            fps: 30.0,
-            latency: Some(Duration::from_millis(3)),
-            area: "Living room".into(),
-            channels: 6,
-        };
-        // Six lights around a film still: warm on the left, cool on the right.
+        self.status = Status::default();
+        self.status.state = EngineState::Streaming;
+        self.status.fps = 30.0;
+        self.status.latency = Some(Duration::from_millis(3));
+        self.status.area = "Living room".into();
+        self.status.channels = 6;
+        self.status.lights = [
+            "Floor lamp left",
+            "Hue Play left",
+            "TV lightstrip (1/2)",
+            "TV lightstrip (2/2)",
+            "Floor lamp right",
+            "Hue Play right",
+        ]
+        .map(String::from)
+        .into();
+        // Six lights around a film still: warm on the left, cool on the right. The landing page
+        // (docs/site/index.html, `.lights`) puts hover targets on these dots with these names.
         self.colors = vec![
             tests::light(0.0, 0.2, [65_535, 30_000, 8_000]),
             tests::light(0.0, 0.75, [65_535, 22_000, 4_000]),

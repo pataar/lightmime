@@ -19,7 +19,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::capture::ScreenCapture;
 use crate::color::{ColorMapper, Zone};
 use crate::config::{BridgeConfig, Config, Setup, SyncSettings};
-use crate::hue::{Bridge, ChannelColor, EntertainmentStream};
+use crate::hue::{Bridge, ChannelColor, EntertainmentConfiguration, EntertainmentStream};
 
 /// What frontends show. Every change is made by the engine:
 ///
@@ -71,7 +71,9 @@ impl EngineState {
     }
 }
 
+/// Non-exhaustive, so new fields are not a breaking change; start from `Status::default()`.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct Status {
     pub state: EngineState,
     /// Frames actually sent per second.
@@ -81,6 +83,9 @@ pub struct Status {
     /// Name of the entertainment area being streamed to.
     pub area: String,
     pub channels: usize,
+    /// Name of each channel's light, in the order of [`Engine::subscribe_colors`]; empty
+    /// when the bridge did not say.
+    pub lights: Vec<String>,
 }
 
 enum Command {
@@ -626,22 +631,9 @@ impl Opening {
         }
 
         // Read before starting the area, while the lights still show their own state.
-        let room = match self.unless_cancelled(bridge.channel_colors(&area)).await {
-            Ok(room) => room,
-            Err(e) if self.is_cancelled() => {
-                capture.stop().await;
-                return Err(e);
-            }
-            Err(e) => {
-                tracing::warn!("could not read the lights' state, fading from black: {e:#}");
-                area.channels
-                    .iter()
-                    .map(|c| ChannelColor {
-                        channel_id: c.channel_id,
-                        rgb: [0; 3],
-                    })
-                    .collect()
-            }
+        let Ok((room, names)) = self.unless_cancelled(read_lights(&bridge, &area)).await else {
+            capture.stop().await;
+            bail!("cancelled");
         };
 
         // Not cancelled from here: the area must be stopped once started, which
@@ -656,6 +648,7 @@ impl Opening {
         self.status.send_modify(|s| {
             s.area.clone_from(&area.metadata.name);
             s.channels = zones.len();
+            s.lights = names;
         });
 
         let worker = StreamWorker {
@@ -681,10 +674,6 @@ impl Opening {
         })
     }
 
-    fn is_cancelled(&self) -> bool {
-        *self.cancelled.borrow()
-    }
-
     /// Run `step` unless the opening is cancelled first.
     async fn unless_cancelled<T>(&self, step: impl Future<Output = Result<T>>) -> Result<T> {
         let mut cancelled = self.cancelled.clone();
@@ -693,6 +682,30 @@ impl Opening {
             _ = cancelled.wait_for(|c| *c) => bail!("cancelled"),
         }
     }
+}
+
+/// What each channel's light shows now and its name. Never fails: without the colours
+/// sync fades in from black, without the names the window shows none.
+async fn read_lights(
+    bridge: &Bridge,
+    area: &EntertainmentConfiguration,
+) -> Result<(Vec<ChannelColor>, Vec<String>)> {
+    let (room, names) = tokio::join!(bridge.channel_colors(area), bridge.channel_names(area));
+    let room = room.unwrap_or_else(|e| {
+        tracing::warn!("could not read the lights' state, fading from black: {e:#}");
+        area.channels
+            .iter()
+            .map(|c| ChannelColor {
+                channel_id: c.channel_id,
+                rgb: [0; 3],
+            })
+            .collect()
+    });
+    let names = names.unwrap_or_else(|e| {
+        tracing::warn!("could not read the lights' names: {e:#}");
+        Vec::new()
+    });
+    Ok((room, names))
 }
 
 /// Runs on its own thread: DTLS is blocking and the loop is time-critical.

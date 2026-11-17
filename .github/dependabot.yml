@@ -15,6 +15,13 @@ updates:
         patterns: ["gpui-pre*"]
       cargo:
         update-types: [minor, patch]
+    ignore:
+      # gpui-pre, ksni, accesskit, notify-rust and oo7 still use zbus 5 and ashpd 0.13; bumping ours alone builds
+      # both majors of each. Lift this once gpui-pre and ksni are on zbus 6.
+      - dependency-name: zbus
+        update-types: ["version-update:semver-major"]
+      - dependency-name: ashpd
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
