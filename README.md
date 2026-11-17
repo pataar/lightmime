@@ -32,7 +32,7 @@ latency.
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders. See [Home Assistant](https://lightmime.pataar.nl/docs/home-assistant.html).
 - **Light on resources**: one Rust binary that scales each frame down to 64×36 pixels before touching it. While syncing
-  at 30 fps it uses about 1 % of one CPU core and 36 MB of memory
+  at 30 fps it uses about 3 % of one CPU core and 36 MB of memory
   ([measurement](https://lightmime.pataar.nl/docs/comparison.html#resource-use)).
 
 ## Install
@@ -77,7 +77,8 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
 ## How it works
 
 1. **Capture**: ScreenCast portal → PipeWire node → GStreamer
-   (`pipewiresrc ! videoconvert ! videoscale`) → 64×36 RGB frames.
+   (`pipewiresrc ! videoscale ! videoscale ! videoconvert`) → 64×36 RGB frames,
+   averaged in linear light over a 256×144 sample grid.
 2. **Mapping**: each entertainment channel samples the screen region matching
    its position in the area (x = left/right, z = bottom/top), averaged in
    linear light, then saturation, smoothing and brightness are applied.

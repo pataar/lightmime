@@ -215,6 +215,11 @@ impl Drop for ScreenCapture {
     }
 }
 
+/// The nearest-neighbour step's size, as a multiple of the captured frame's: 256 × 144 by default.
+/// Twice this cut the remaining flicker of a small moving object from ~50 % to ~20 %, but cost
+/// four times the CPU; each light averages hundreds of pixels, so it is not worth it.
+const PRESCALE: u32 = 4;
+
 fn build_pipeline(
     source: &str,
     config: &CaptureConfig,
@@ -227,18 +232,30 @@ fn build_pipeline(
     // Scale down before converting, so conversion runs on a few thousand
     // pixels. Buffers are not copied out of PipeWire (`always-copy`): the
     // pipeline releases them as soon as they are scaled.
+    //
+    // Scaling runs in two steps. videoscale's default is 2-tap: from 4K to 64 × 36 every output
+    // pixel reads 2 × 2 of the ~60 × 60 it covers, so small bright things (subtitles, a cursor)
+    // blink in and out of the lights. Its multi-tap filter averages every input pixel, in linear
+    // light with `gamma-decode` (else a black and white mix comes out at a fifth of its
+    // brightness, not half), but costs ~30 ms per 4K frame. So nearest-neighbour first takes a
+    // grid of samples, `PRESCALE` times the final size, and the filter averages those: ~0.3 ms
+    // per 3440 × 1440 frame.
     let max_fps = max_fps.clamp(1, MAX_FPS);
     let description = format!(
         "{source} \
          ! capsfilter name=limit caps=\"{caps}\" \
          ! videorate name=rate drop-only=true max-rate={max_fps} \
-         ! videoscale add-borders=false \
+         ! videoscale method=nearest-neighbour add-borders=false \
+         ! video/x-raw,width={sw},height={sh},pixel-aspect-ratio=1/1 \
+         ! videoscale method=bilinear2 gamma-decode=true \
          ! video/x-raw,width={w},height={h},pixel-aspect-ratio=1/1 \
          ! videoconvert ! video/x-raw,format=RGB \
          ! appsink name=sink max-buffers=1 drop=true sync=false",
         caps = framerate_caps(max_fps),
         w = config.width,
         h = config.height,
+        sw = config.width.saturating_mul(PRESCALE),
+        sh = config.height.saturating_mul(PRESCALE),
     );
     let pipeline = gst::parse::launch(&description)
         .context("building the capture pipeline (is gst-plugin-pipewire installed?)")?
