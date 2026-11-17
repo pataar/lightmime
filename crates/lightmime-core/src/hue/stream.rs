@@ -4,7 +4,7 @@
 //! This is blocking code; run it on a dedicated thread.
 
 use std::io::{self, Read, Write};
-use std::net::{ToSocketAddrs, UdpSocket};
+use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -66,11 +66,16 @@ impl EntertainmentStream {
             .try_into()
             .map_err(|_| anyhow!("entertainment area id must be a 36-character UUID"))?;
         let psk = decode_hex(client_key).context("client key must be hex")?;
+        let addr = (host, PORT)
+            .to_socket_addrs()
+            .with_context(|| format!("resolving {host}"))?
+            .next()
+            .ok_or_else(|| anyhow!("{host} did not resolve"))?;
 
         let mut last_error = anyhow!("no handshake attempted");
         for attempt in 1..=HANDSHAKE_ATTEMPTS {
             let started = Instant::now();
-            match handshake(host, psk_identity, &psk) {
+            match handshake(addr, psk_identity, &psk) {
                 Ok(tls) => {
                     return Ok(Self {
                         tls,
@@ -131,12 +136,7 @@ impl EntertainmentStream {
     }
 }
 
-fn handshake(host: &str, identity: &str, psk: &[u8]) -> Result<SslStream<Datagram>> {
-    let addr = (host, PORT)
-        .to_socket_addrs()
-        .with_context(|| format!("resolving {host}"))?
-        .next()
-        .ok_or_else(|| anyhow!("{host} did not resolve"))?;
+fn handshake(addr: SocketAddr, identity: &str, psk: &[u8]) -> Result<SslStream<Datagram>> {
     let socket = UdpSocket::bind(if addr.is_ipv4() {
         "0.0.0.0:0"
     } else {
@@ -147,6 +147,8 @@ fn handshake(host: &str, identity: &str, psk: &[u8]) -> Result<SslStream<Datagra
 
     let mut ctx = SslContext::builder(SslMethod::dtls_client())?;
     ctx.set_min_proto_version(Some(openssl::ssl::SslVersion::DTLS1_2))?;
+    // OpenSSL 4 also offers DTLS 1.3, whose key share splits the ClientHello over two datagrams the bridge ignores.
+    ctx.set_max_proto_version(Some(openssl::ssl::SslVersion::DTLS1_2))?;
     ctx.set_cipher_list("PSK-AES128-GCM-SHA256")?;
     ctx.set_verify(SslVerifyMode::NONE);
     ctx.set_options(SslOptions::NO_QUERY_MTU);
@@ -197,5 +199,25 @@ mod tests {
         assert_eq!(decode_hex("00ff10").unwrap(), vec![0x00, 0xff, 0x10]);
         assert!(decode_hex("abc").is_err());
         assert!(decode_hex("zz").is_err());
+    }
+
+    /// The bridge ignores a `ClientHello` split over several datagrams, which an offer of DTLS 1.3 causes.
+    #[test]
+    fn client_hello_fits_one_datagram() {
+        let listener = UdpSocket::bind("127.0.0.1:0").unwrap();
+        listener.set_read_timeout(Some(HANDSHAKE_TIMEOUT)).unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || handshake(addr, "identity", &[0; 16]));
+
+        let mut datagram = [0; 2048];
+        let len = listener.recv(&mut datagram).unwrap();
+        // DTLS record header (13 bytes), then handshake header: length at 14..17, fragment length at 22..25.
+        assert!(len <= MTU as usize, "ClientHello datagram is {len} bytes");
+        assert_eq!(datagram[13], 1, "first message is a ClientHello");
+        assert_eq!(
+            datagram[14..17],
+            datagram[22..25],
+            "ClientHello is fragmented"
+        );
     }
 }
