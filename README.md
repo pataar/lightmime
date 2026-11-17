@@ -77,7 +77,8 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
 ## How it works
 
 1. **Capture**: ScreenCast portal → PipeWire node → GStreamer
-   (`pipewiresrc ! videoconvert ! videoscale`) → 64×36 RGB frames.
+   (`pipewiresrc ! videoscale ! videoscale ! videoconvert`) → 64×36 RGB frames,
+   averaged in linear light over a 512×288 sample grid.
 2. **Mapping**: each entertainment channel samples the screen region matching
    its position in the area (x = left/right, z = bottom/top), averaged in
    linear light, then saturation, smoothing and brightness are applied.

@@ -32,7 +32,7 @@ An annotated example is in
 | Key | Default | Meaning |
 |---|---|---|
 | `source` | `"monitor"` | What the screen picker offers: `"monitor"` or `"window"`. |
-| `width`, `height` | `64`, `36` | Frames are scaled down to this size before the colours are taken. More gives no visible gain. |
+| `width`, `height` | `64`, `36` | Frames are scaled down to this size before the colours are taken, through a grid of 8 × this size. Each light already averages hundreds of these pixels, so more gives no visible gain, only more CPU. |
 
 ## `[sync]`
 
