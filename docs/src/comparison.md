@@ -11,8 +11,8 @@ Measured with `lightmime run` syncing a 3440 × 1440 desktop to a four-light are
 
 | | |
 |---|---|
-| CPU | about 3.3 % of one core (1.4 % user, 1.9 % system) |
-| Memory | 36 MB resident, 28 MB proportional set size |
+| CPU | about 1.2 % of one core (1.1 % user, 0.1 % system) |
+| Memory | 69 MB resident, 45 MB proportional set size: 10 MB of its own, the rest mostly the screen's frames, which it maps from memory shared with the compositor |
 | Binary | 12.5 MB headless, 40 MB with the window and tray (stripped) |
 
 To check it on your own machine while syncing:
