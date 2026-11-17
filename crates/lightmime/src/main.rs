@@ -80,7 +80,8 @@ enum Command {
     },
 }
 
-#[tokio::main]
+// A handful of I/O tasks; the default (one worker per CPU) only adds idle threads. Two, as `gui` blocks one.
+#[tokio::main(worker_threads = 2)]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
