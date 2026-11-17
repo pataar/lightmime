@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/pataar/lightmime/compare/v0.5.1...v0.6.0) - 2026-11-17
+
+### Added
+
+- leave black bars out of the picture the lights sample ([#41](https://github.com/pataar/lightmime/pull/41))
+
+### Fixed
+
+- keep black bars while subtitles show in one of them ([#52](https://github.com/pataar/lightmime/pull/52))
+- *(core)* cap DTLS at 1.2 so OpenSSL 4 builds can stream ([#51](https://github.com/pataar/lightmime/pull/51))
+
 ## [0.5.1](https://github.com/pataar/lightmime/compare/v0.5.0...v0.5.1) - 2026-11-17
 
 ### Fixed
