@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1](https://github.com/pataar/lightmime/compare/v0.5.0...v0.5.1) - 2026-11-17
+
+### Fixed
+
+- average the whole screen, in linear light, when scaling down ([#40](https://github.com/pataar/lightmime/pull/40))
+
+### Other
+
+- *(mqtt)* publish the state topics only when they change ([#46](https://github.com/pataar/lightmime/pull/46))
+- *(capture)* keep the screen's shared memory mapped between frames ([#48](https://github.com/pataar/lightmime/pull/48))
+- run the binary on two tokio workers ([#45](https://github.com/pataar/lightmime/pull/45))
+- stop the engine's health timer while not syncing ([#43](https://github.com/pataar/lightmime/pull/43))
+
 ## [0.5.0](https://github.com/pataar/lightmime/compare/v0.4.1...v0.5.0) - 2026-11-17
 
 ### Added
