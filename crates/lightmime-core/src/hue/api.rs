@@ -171,6 +171,14 @@ struct Owned {
     owner: ResourceRef,
 }
 
+/// A physical device; its name is the one shown in the Hue app.
+#[derive(Deserialize)]
+struct Device {
+    id: String,
+    #[serde(default)]
+    metadata: Metadata,
+}
+
 #[derive(Deserialize)]
 struct Light {
     owner: ResourceRef,
@@ -361,6 +369,14 @@ impl Bridge {
             .collect())
     }
 
+    /// The name of each channel's light, as in the Hue app, in the area's channel order.
+    /// The segments of a gradient light get their number appended, e.g. `Lightstrip (2/3)`.
+    pub async fn channel_names(&self, area: &EntertainmentConfiguration) -> Result<Vec<String>> {
+        let services: Vec<Owned> = self.resources("entertainment").await?;
+        let devices: Vec<Device> = self.resources("device").await?;
+        Ok(name_channels(&area.channels, &services, &devices))
+    }
+
     async fn resources<T: serde::de::DeserializeOwned>(&self, kind: &str) -> Result<Vec<T>> {
         let response: ClipResponse<T> = self
             .client
@@ -391,9 +407,49 @@ impl Bridge {
     }
 }
 
+fn name_channels(channels: &[Channel], services: &[Owned], devices: &[Device]) -> Vec<String> {
+    let names: Vec<String> = channels
+        .iter()
+        .map(|channel| {
+            let mut owners: Vec<&str> = Vec::new();
+            for member in &channel.members {
+                let name = services
+                    .iter()
+                    .find(|s| s.id == member.service.rid)
+                    .and_then(|service| devices.iter().find(|d| d.id == service.owner.rid))
+                    .map(|device| device.metadata.name.as_str())
+                    .filter(|name| !name.is_empty());
+                if let Some(name) = name
+                    && !owners.contains(&name)
+                {
+                    owners.push(name);
+                }
+            }
+            if owners.is_empty() {
+                format!("Channel {}", channel.channel_id)
+            } else {
+                owners.join(", ")
+            }
+        })
+        .collect();
+    // A gradient light drives several channels; number them so each dot tells its segment.
+    names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            let total = names.iter().filter(|n| *n == name).count();
+            if total == 1 {
+                return name.clone();
+            }
+            let nth = names[..=i].iter().filter(|n| *n == name).count();
+            format!("{name} ({nth}/{total})")
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::bridge_host;
+    use super::{Channel, Device, Owned, bridge_host, name_channels};
 
     #[test]
     fn bridge_host_takes_pasted_urls() {
@@ -401,5 +457,30 @@ mod tests {
         assert_eq!(bridge_host(" https://192.168.1.20/ "), "192.168.1.20");
         assert_eq!(bridge_host("http://hue.local"), "hue.local");
         assert_eq!(bridge_host(""), "");
+    }
+
+    #[test]
+    fn channels_are_named_after_their_device() {
+        let channels: Vec<Channel> = serde_json::from_value(serde_json::json!([
+            { "channel_id": 0, "members": [{ "service": { "rid": "ent-play" } }] },
+            { "channel_id": 1, "members": [{ "service": { "rid": "ent-strip" } }] },
+            { "channel_id": 2, "members": [{ "service": { "rid": "ent-strip" } }] },
+            { "channel_id": 3, "members": [{ "service": { "rid": "ent-gone" } }] },
+        ]))
+        .unwrap();
+        let services: Vec<Owned> = serde_json::from_value(serde_json::json!([
+            { "id": "ent-play", "owner": { "rid": "dev-play" } },
+            { "id": "ent-strip", "owner": { "rid": "dev-strip" } },
+        ]))
+        .unwrap();
+        let devices: Vec<Device> = serde_json::from_value(serde_json::json!([
+            { "id": "dev-play", "metadata": { "name": "Play left" } },
+            { "id": "dev-strip", "metadata": { "name": "TV strip" } },
+        ]))
+        .unwrap();
+        assert_eq!(
+            name_channels(&channels, &services, &devices),
+            ["Play left", "TV strip (1/2)", "TV strip (2/2)", "Channel 3"]
+        );
     }
 }

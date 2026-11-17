@@ -157,6 +157,39 @@ header.top nav a:hover { color: var(--accent); }
     z-index: -1;
 }
 .shot img { border-radius: var(--radius); box-shadow: 0 20px 60px rgba(12, 13, 24, 0.35); }
+/* Hover targets over the room map's dots, placed in the window's own 440 × 1136 px. Names and
+   positions follow MainView::show_demo in crates/lightmime-gui/src/view.rs. */
+.lights { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.lights li {
+    position: absolute;
+    left: calc(var(--x) / 440 * 100%);
+    top: calc(var(--y) / 1136 * 100%);
+    width: 22px;
+    height: 22px;
+    translate: -50% -50%;
+    border-radius: 50%;
+    cursor: default;
+    outline-offset: 0;
+}
+.lights li:hover, .lights li:focus-visible { background: rgba(255, 255, 255, 0.25); }
+.lights span {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    translate: -50% 0;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--fg);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(12, 13, 24, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s;
+}
+.lights li:hover span, .lights li:focus span { opacity: 1; }
 
 section { padding: 72px 0; }
 section.alt { background: var(--surface-raised); }
@@ -418,9 +451,17 @@ footer a { color: var(--muted); }
             <div class="shot">
                 <picture>
                     <source media="(prefers-color-scheme: dark)" srcset="/docs/images/window-dark.png">
-                    <img src="/docs/images/window-light.png" width="440" height="960" fetchpriority="high"
+                    <img src="/docs/images/window-light.png" width="440" height="1136" fetchpriority="high"
                         alt="The lightmime window while syncing to a Hue entertainment area with six lights">
                 </picture>
+                <ul class="lights" aria-label="The lights in the screenshot">
+                    <li tabindex="0" style="--x: 124; --y: 72.6"><span>Floor lamp left</span></li>
+                    <li tabindex="0" style="--x: 124; --y: 132"><span>Hue Play left</span></li>
+                    <li tabindex="0" style="--x: 191.2; --y: 51"><span>TV lightstrip (1/2)</span></li>
+                    <li tabindex="0" style="--x: 258.4; --y: 51"><span>TV lightstrip (2/2)</span></li>
+                    <li tabindex="0" style="--x: 316; --y: 83.4"><span>Floor lamp right</span></li>
+                    <li tabindex="0" style="--x: 316; --y: 137.4"><span>Hue Play right</span></li>
+                </ul>
             </div>
         </div>
     </section>
