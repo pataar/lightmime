@@ -26,6 +26,8 @@ latency.
   and saturation while it runs. See [Window and tray](https://lightmime.pataar.nl/docs/gui.html).
 - **Made for Wayland**: capture goes through the screen-cast portal and PipeWire, on KDE Plasma, GNOME and wlroots
   compositors (Hyprland included). You pick the screen once.
+- **Looks past black bars**: letterboxed films and 16:9 video on an ultrawide screen leave black bars; lightmime
+  leaves them out, so the outer lights follow the picture. See [Tuning](https://lightmime.pataar.nl/docs/tuning.html).
 - **Keybindings and status bars**: `lightmime toggle` and a Waybar module through `lightmime status --waybar --follow`.
   See [Hyprland and Omarchy](https://lightmime.pataar.nl/docs/hyprland.html).
 - **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/docs/background.html).
@@ -79,9 +81,10 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
 1. **Capture**: ScreenCast portal → PipeWire node → GStreamer
    (`pipewiresrc ! videoscale ! videoscale ! videoconvert`) → 64×36 RGB frames,
    averaged in linear light over a 256×144 sample grid.
-2. **Mapping**: each entertainment channel samples the screen region matching
-   its position in the area (x = left/right, z = bottom/top), averaged in
-   linear light, then saturation, smoothing and brightness are applied.
+2. **Mapping**: black bars around the picture are left out; each entertainment
+   channel samples the region matching its position in the area
+   (x = left/right, z = bottom/top), averaged in linear light, then saturation,
+   smoothing and brightness are applied.
 3. **Streaming**: the area is started through the CLIP v2 API, then HueStream
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port
    2100, one datagram per frame.

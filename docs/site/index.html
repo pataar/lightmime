@@ -490,6 +490,12 @@ footer a { color: var(--muted); }
                         <code>flatpak update</code> or your software centre.</p>
                 </article>
                 <article class="feature">
+                    <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6.5 5v14M17.5 5v14"/><path d="m10 9.5-2 2.5 2 2.5M14 9.5l2 2.5-2 2.5"/></svg></div>
+                    <h3>Looks past black bars</h3>
+                    <p>A wide film on a 16:9 screen or a 16:9 video on an ultrawide one leaves black bars. lightmime
+                        leaves them out, so the outer lights follow the picture instead of going dark.</p>
+                </article>
+                <article class="feature">
                     <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 6-5-6-5M12 19h8"/></svg></div>
                     <h3>Headless if you like</h3>
                     <p><code>lightmime run</code> syncs without a window, for example as a systemd user service on
@@ -602,8 +608,8 @@ footer a { color: var(--muted); }
                     <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></div>
                     <span class="step">Step 2</span>
                     <h3>Map</h3>
-                    <p>Every light in the entertainment area takes the average colour of the screen around its position, then gets your saturation, smoothing and brightness.</p>
-                    <div class="chips"><code>linear light</code><code>saturation</code><code>smoothing</code></div>
+                    <p>Black bars around the picture are left out. Every light in the entertainment area takes the average colour of the picture around its position, then gets your saturation, smoothing and brightness.</p>
+                    <div class="chips"><code>linear light</code><code>black bars</code><code>saturation</code><code>smoothing</code></div>
                 </li>
                 <li class="stage">
                     <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg></div>

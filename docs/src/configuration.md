@@ -43,6 +43,7 @@ An annotated example is in
 | `smoothing` | `0.3` | 0.0–0.95 | Smoothing between frames. |
 | `saturation` | `1.2` | 0.0–3.0 | Saturation; 1.0 keeps the screen's colours. |
 | `region_size` | `0.3` | 0.05–1.0 | Part of the screen each light averages. |
+| `black_bars` | `0.25` | 0.0–0.4 | Black bars up to this part of each edge are left out; `0` turns it off. |
 
 Values outside the range are clamped. See [Tuning](tuning.md).
 

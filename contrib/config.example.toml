@@ -25,6 +25,8 @@ smoothing = 0.3
 saturation = 1.2
 # Sampled region per light, as a fraction of the screen
 region_size = 0.3
+# Black bars up to this fraction of each edge are left out (0.0-0.4, 0 turns it off)
+black_bars = 0.25
 
 [mqtt]
 # Home Assistant over MQTT; optional.
