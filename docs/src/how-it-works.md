@@ -7,11 +7,11 @@ lightmime is a pipeline of three stages, run every frame.
 The [XDG ScreenCast portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.ScreenCast.html)
 asks you which screen to share and hands lightmime a PipeWire stream of it, with a restore token so it can skip the
 question next time. GStreamer receives the stream and scales it down to 64 × 36 pixels of RGB, in two steps: first
-it picks a grid of 512 × 288 samples, then it averages those in linear light. Every part of the screen counts, so a
-small bright detail such as a subtitle does not blink in and out of the lights, at about a millisecond per 4K frame:
+it picks a grid of 256 × 144 samples spread over the whole screen, then it averages those in linear light. So a small
+bright detail such as a subtitle does not blink in and out of the lights, for a fraction of a millisecond per frame:
 
 ```text
-pipewiresrc ! videoscale method=nearest-neighbour ! 512×288
+pipewiresrc ! videoscale method=nearest-neighbour ! 256×144
             ! videoscale method=bilinear2 gamma-decode=true ! 64×36
             ! videoconvert ! RGB ! appsink
 ```
