@@ -63,6 +63,15 @@ const SLIDERS: &[Slider] = &[
     },
 ];
 
+/// What the status topics last carried.
+#[derive(Default)]
+struct Published {
+    /// State, area and channels.
+    shown: Option<(EngineState, String, usize)>,
+    /// None until the first publish; `Instant::now() - FPS_INTERVAL` panics in the first seconds after boot.
+    fps_at: Option<Instant>,
+}
+
 pub struct MqttBridge {
     config: MqttConfig,
     node: String,
@@ -126,8 +135,7 @@ impl MqttBridge {
         let (client, mut events) = AsyncClient::new(options, 32);
 
         let mut status_rx = self.engine.subscribe();
-        // None until the first publish; `Instant::now() - FPS_INTERVAL` panics in the first seconds after boot.
-        let mut last_fps_publish: Option<Instant> = None;
+        let mut published = Published::default();
         let mut save_pending = false;
         /* rumqttc only drains its request queue while connected, so publishing during an outage fills it and the next
         publish blocks this loop, which then never polls the event loop to reconnect. `announce` catches up instead. */
@@ -183,7 +191,8 @@ impl MqttBridge {
                         self.persist_settings();
                     }
                     let status = self.engine.status();
-                    self.publish_status(&client, &status, true).await?;
+                    self.publish_status(&client, &status).await?;
+                    self.publish_fps(&client, status.fps).await?;
                     client
                         .publish(self.topic("availability"), QoS::AtLeastOnce, true, "offline")
                         .await?;
@@ -201,12 +210,7 @@ impl MqttBridge {
                         continue;
                     }
                     let status = status_rx.borrow_and_update().clone();
-                    let publish_fps = last_fps_publish.is_none_or(|t| t.elapsed() >= FPS_INTERVAL)
-                        || status.state != EngineState::Streaming;
-                    self.publish_status(&client, &status, publish_fps).await?;
-                    if publish_fps {
-                        last_fps_publish = Some(Instant::now());
-                    }
+                    self.publish_changes(&client, &status, &mut published).await?;
                 }
             }
         }
@@ -337,8 +341,9 @@ impl MqttBridge {
             .publish(availability, QoS::AtLeastOnce, true, "online")
             .await?;
         self.publish_settings(client).await?;
-        self.publish_status(client, &self.engine.status(), true)
-            .await
+        let status = self.engine.status();
+        self.publish_status(client, &status).await?;
+        self.publish_fps(client, status.fps).await
     }
 
     /// Handle one incoming message; returns whether the settings changed and
@@ -399,12 +404,7 @@ impl MqttBridge {
         Ok(())
     }
 
-    async fn publish_status(
-        &self,
-        client: &AsyncClient,
-        status: &Status,
-        with_fps: bool,
-    ) -> Result<()> {
+    async fn publish_status(&self, client: &AsyncClient, status: &Status) -> Result<()> {
         client
             .publish(
                 self.topic("sync/state"),
@@ -438,16 +438,40 @@ impl MqttBridge {
                 attributes.to_string(),
             )
             .await?;
-        if with_fps {
-            client
-                .publish(
-                    self.topic("fps/state"),
-                    QoS::AtMostOnce,
-                    false,
-                    status.fps.to_string(),
-                )
-                .await?;
+        Ok(())
+    }
+
+    /// Publish what changed since `published`: the engine notifies for every fps update, which is
+    /// throttled to [`FPS_INTERVAL`] while streaming.
+    async fn publish_changes(
+        &self,
+        client: &AsyncClient,
+        status: &Status,
+        published: &mut Published,
+    ) -> Result<()> {
+        let shown = (status.state.clone(), status.area.clone(), status.channels);
+        if published.shown.as_ref() != Some(&shown) {
+            self.publish_status(client, status).await?;
+            published.shown = Some(shown);
         }
+        if published.fps_at.is_none_or(|t| t.elapsed() >= FPS_INTERVAL)
+            || status.state != EngineState::Streaming
+        {
+            self.publish_fps(client, status.fps).await?;
+            published.fps_at = Some(Instant::now());
+        }
+        Ok(())
+    }
+
+    async fn publish_fps(&self, client: &AsyncClient, fps: f32) -> Result<()> {
+        client
+            .publish(
+                self.topic("fps/state"),
+                QoS::AtMostOnce,
+                false,
+                fps.to_string(),
+            )
+            .await?;
         Ok(())
     }
 
