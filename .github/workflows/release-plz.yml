@@ -9,6 +9,12 @@ on:
 
 permissions: {}
 
+env:
+  # .cargo/config.toml holds back releases younger than 3 days. Here that would also hold back our own crates:
+  # cargo-semver-checks resolves lightmime-gui against the lightmime-core just released, and publishing lightmime-gui
+  # needs the lightmime-core published a moment before. These resolutions are throwaway; Cargo.lock keeps the cooldown.
+  CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE: allow
+
 jobs:
   release:
     name: Tag
