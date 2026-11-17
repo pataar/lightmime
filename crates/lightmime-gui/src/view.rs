@@ -130,13 +130,25 @@ impl MainView {
         cx.observe_window_appearance(window, |_, _, cx| cx.notify())
             .detach();
 
-        let status_watcher = watch(shared.engine.subscribe(), cx, |this, s| this.status = s);
-        let settings_watcher = watch(shared.engine.subscribe_settings(), cx, |this, s| {
-            this.settings = s;
+        let status_watcher = watch(shared.engine.subscribe(), Duration::ZERO, cx, |this, s| {
+            this.status = s;
         });
-        let colors_watcher = watch(shared.engine.subscribe_colors(), cx, |this, colors| {
-            this.colors = colors;
-        });
+        let settings_watcher = watch(
+            shared.engine.subscribe_settings(),
+            Duration::ZERO,
+            cx,
+            |this, s| {
+                this.settings = s;
+            },
+        );
+        let colors_watcher = watch(
+            shared.engine.subscribe_colors(),
+            COLOUR_REFRESH,
+            cx,
+            |this, colors| {
+                this.colors = colors;
+            },
+        );
 
         let mut view = Self {
             status: shared.engine.status(),
@@ -743,9 +755,14 @@ fn screen_edges(colors: &[(Zone, ChannelColor)]) -> Option<[Hsla; 2]> {
     }
 }
 
-/// Copy every value from `rx` into the view until either side goes away.
+/// The room map and the background follow the lights at most this often: every update repaints the whole
+/// window, and the colours change on every frame sent (30–60 a second).
+const COLOUR_REFRESH: Duration = Duration::from_millis(50);
+
+/// Copy the latest value from `rx` into the view, at most once per `min_interval`, until either side goes away.
 fn watch<T: Clone + 'static>(
     mut rx: tokio::sync::watch::Receiver<T>,
+    min_interval: Duration,
     cx: &mut Context<MainView>,
     apply: fn(&mut MainView, T),
 ) -> Task<()> {
@@ -758,6 +775,9 @@ fn watch<T: Clone + 'static>(
             });
             if updated.is_err() {
                 break;
+            }
+            if !min_interval.is_zero() {
+                cx.background_executor().timer(min_interval).await;
             }
         }
     })

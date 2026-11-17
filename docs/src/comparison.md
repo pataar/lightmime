@@ -7,12 +7,12 @@ into PipeWire at no more than 60 fps; lightmime drops frames above the sync rate
 pixels before converting it, so colour mapping only ever looks at 2,304 pixels a frame. See [How it works](how-it-works.md).
 
 Measured with `lightmime run` syncing a 3440 × 1440 desktop to a four-light area at 30 fps, with the
-[Home Assistant](home-assistant.md) bridge on, on an AMD Ryzen 9 5900XT, over 60 seconds:
+[Home Assistant](home-assistant.md) bridge on, on an AMD Ryzen 9 5900XT, over 60 seconds of a full-screen video:
 
 | | |
 |---|---|
-| CPU | about 0.9 % of one core (0.5 % user, 0.4 % system) |
-| Memory | 36 MB resident, 26 MB proportional set size |
+| CPU | about 1.2 % of one core (1.1 % user, 0.1 % system) |
+| Memory | 69 MB resident, 45 MB proportional set size: 10 MB of its own, the rest mostly the screen's frames, which it maps from memory shared with the compositor |
 | Binary | 12.5 MB headless, 40 MB with the window and tray (stripped) |
 
 To check it on your own machine while syncing:

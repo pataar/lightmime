@@ -34,7 +34,7 @@ latency.
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders. See [Home Assistant](https://lightmime.pataar.nl/docs/home-assistant.html).
 - **Light on resources**: one Rust binary that scales each frame down to 64×36 pixels before touching it. While syncing
-  at 30 fps it uses about 1 % of one CPU core and 36 MB of memory
+  at 30 fps it uses about 1 % of one CPU core and 69 MB of memory, most of it shared with the compositor
   ([measurement](https://lightmime.pataar.nl/docs/comparison.html#resource-use)).
 
 ## Install
@@ -82,8 +82,9 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
    (`pipewiresrc ! videoscale ! videoscale ! videoconvert`) → 64×36 RGB frames,
    averaged in linear light over a 256×144 sample grid.
 2. **Mapping**: black bars around the picture are left out; each entertainment
-   channel samples the region matching its position in the area (x = left/right, z = bottom/top), averaged in
-   linear light, then saturation, smoothing and brightness are applied.
+   channel samples the region matching its position in the area
+   (x = left/right, z = bottom/top), averaged in linear light, then saturation,
+   smoothing and brightness are applied.
 3. **Streaming**: the area is started through the CLIP v2 API, then HueStream
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port
    2100, one datagram per frame.
