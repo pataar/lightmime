@@ -14,15 +14,17 @@ pub struct Frame {
 }
 
 impl Frame {
-    /// Average colour of a rectangle given in normalised coordinates (0..1),
-    /// as linear-light RGB in 0..1.
-    fn average(&self, cx: f32, cy: f32, size: f32) -> [f32; 3] {
-        let (w, h) = (self.width as f32, self.height as f32);
+    /// Average colour of a rectangle given in coordinates normalised (0..1) to the picture
+    /// inside `bars`, as linear-light RGB in 0..1.
+    fn average(&self, cx: f32, cy: f32, size: f32, bars: Bars) -> [f32; 3] {
+        let (left, top) = (bars.x as f32, bars.y as f32);
+        let w = self.width.saturating_sub(2 * bars.x).max(1) as f32;
+        let h = self.height.saturating_sub(2 * bars.y).max(1) as f32;
         let half = size / 2.0;
-        let x0 = (((cx - half).max(0.0)) * w) as u32;
-        let x1 = ((((cx + half).min(1.0)) * w).ceil() as u32).clamp(x0 + 1, self.width);
-        let y0 = (((cy - half).max(0.0)) * h) as u32;
-        let y1 = ((((cy + half).min(1.0)) * h).ceil() as u32).clamp(y0 + 1, self.height);
+        let x0 = (left + (cx - half).max(0.0) * w) as u32;
+        let x1 = ((left + (cx + half).min(1.0) * w).ceil() as u32).clamp(x0 + 1, self.width);
+        let y0 = (top + (cy - half).max(0.0) * h) as u32;
+        let y1 = ((top + (cy + half).min(1.0) * h).ceil() as u32).clamp(y0 + 1, self.height);
 
         let mut sum = [0.0f32; 3];
         let mut count = 0u32;
@@ -43,6 +45,94 @@ impl Frame {
             return [0.0; 3];
         }
         sum.map(|s| s / count as f32)
+    }
+
+    fn is_dark(&self, x: u32, y: u32) -> bool {
+        let i = (y * self.width + x) as usize * 3;
+        self.data
+            .get(i..i + 3)
+            .is_none_or(|px| px.iter().all(|&c| c <= DARK))
+    }
+
+    /// Dark lines from each end of an axis, as `(start, end)`; `None` when either end is dark
+    /// beyond `limit` lines, as in a dark scene, where the bars can't be told from the picture.
+    fn dark_edges(&self, limit: u32, vertical: bool) -> Option<(u32, u32)> {
+        let (len, across) = if vertical {
+            (self.height, self.width)
+        } else {
+            (self.width, self.height)
+        };
+        let dark_line = |i: u32| {
+            (0..across).all(|j| {
+                if vertical {
+                    self.is_dark(j, i)
+                } else {
+                    self.is_dark(i, j)
+                }
+            })
+        };
+        let count = |lines: &mut dyn Iterator<Item = u32>| {
+            let n = lines
+                .take(limit as usize + 1)
+                .take_while(|&i| dark_line(i))
+                .count() as u32;
+            (n <= limit).then_some(n)
+        };
+        Some((count(&mut (0..len))?, count(&mut (0..len).rev())?))
+    }
+}
+
+/// Brightest value (sRGB, 0..255) a pixel of a black bar may have. Video black is 0, or 16 when a
+/// player gets the range wrong; compression noise adds a little.
+const DARK: u8 = 24;
+
+/// How long new bars must stay before the lights follow them, in seconds. A dark edge in the
+/// picture comes and goes; bars of a film stay.
+const BARS_HOLD_SECS: f32 = 2.0;
+
+/// Black bars around the picture, in pixels cut from each side: `x` from the left and from the
+/// right, `y` from the top and from the bottom.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct Bars {
+    x: u32,
+    y: u32,
+}
+
+/// Follows the black bars on one axis. Bars of letterboxed and pillarboxed video are the same on
+/// both sides, so it cuts as much as the thinner one, and only once that stayed for a while.
+#[derive(Debug, Default)]
+struct BarTracker {
+    current: u32,
+    pending: u32,
+    seen: u32,
+}
+
+impl BarTracker {
+    fn update(&mut self, edges: Option<(u32, u32)>, limit: u32, hold: u32) -> u32 {
+        self.current = self.current.min(limit);
+        let Some((a, b)) = edges else {
+            return self.current;
+        };
+        let candidate = a.min(b);
+        if a.max(b) < self.current {
+            // The picture reaches into both bars: the film ended or went full screen. Subtitles
+            // in one bar don't count.
+            self.current = candidate;
+            self.seen = 0;
+        } else if candidate == self.current {
+            self.seen = 0;
+        } else {
+            if candidate != self.pending {
+                self.pending = candidate;
+                self.seen = 0;
+            }
+            self.seen += 1;
+            if self.seen >= hold {
+                self.current = candidate;
+                self.seen = 0;
+            }
+        }
+        self.current
     }
 }
 
@@ -73,12 +163,22 @@ impl Zone {
 pub struct ColorMapper {
     zones: Vec<Zone>,
     smoothed: Vec<[f32; 3]>,
+    bars_x: BarTracker,
+    bars_y: BarTracker,
+    /// Frame size the bars were measured on; they start over when it changes.
+    frame_size: (u32, u32),
 }
 
 impl ColorMapper {
     pub fn new(zones: Vec<Zone>) -> Self {
         let smoothed = vec![[0.0; 3]; zones.len()];
-        Self { zones, smoothed }
+        Self {
+            zones,
+            smoothed,
+            bars_x: BarTracker::default(),
+            bars_y: BarTracker::default(),
+            frame_size: (0, 0),
+        }
     }
 
     pub fn zones(&self) -> &[Zone] {
@@ -87,12 +187,13 @@ impl ColorMapper {
 
     pub fn map(&mut self, frame: &Frame, settings: &SyncSettings) -> Vec<ChannelColor> {
         let alpha = 1.0 - settings.smoothing;
+        let bars = self.bars(frame, settings);
         self.zones
             .iter()
             .zip(self.smoothed.iter_mut())
             .map(|(zone, previous)| {
                 let sampled = saturate(
-                    frame.average(zone.x, zone.y, settings.region_size),
+                    frame.average(zone.x, zone.y, settings.region_size, bars),
                     settings.saturation,
                 );
                 for c in 0..3 {
@@ -104,6 +205,25 @@ impl ColorMapper {
                 }
             })
             .collect()
+    }
+
+    fn bars(&mut self, frame: &Frame, settings: &SyncSettings) -> Bars {
+        if self.frame_size != (frame.width, frame.height) {
+            self.frame_size = (frame.width, frame.height);
+            self.bars_x = BarTracker::default();
+            self.bars_y = BarTracker::default();
+        }
+        let hold = (BARS_HOLD_SECS * settings.fps as f32) as u32;
+        let limit = |len: u32| (settings.black_bars * len as f32) as u32;
+        let (limit_x, limit_y) = (limit(frame.width), limit(frame.height));
+        Bars {
+            x: self
+                .bars_x
+                .update(frame.dark_edges(limit_x, false), limit_x, hold),
+            y: self
+                .bars_y
+                .update(frame.dark_edges(limit_y, true), limit_y, hold),
+        }
     }
 }
 
@@ -261,6 +381,94 @@ mod tests {
         }
         assert!(first < last);
         assert_eq!(last, 65535);
+    }
+
+    /// A 20 × 10 frame: `bars` black columns on each side, then the picture in `fill`.
+    fn pillarboxed(bars: u32, fill: [u8; 3]) -> Frame {
+        let (width, height) = (20, 10);
+        let data = (0..height)
+            .flat_map(|_| {
+                (0..width).map(move |x| {
+                    if x < bars || x >= width - bars {
+                        [0; 3]
+                    } else {
+                        fill
+                    }
+                })
+            })
+            .flatten()
+            .collect();
+        Frame {
+            width,
+            height,
+            data,
+        }
+    }
+
+    fn left_edge() -> ColorMapper {
+        ColorMapper::new(vec![Zone {
+            channel_id: 0,
+            x: 0.0,
+            y: 0.5,
+        }])
+    }
+
+    fn bar_settings() -> SyncSettings {
+        SyncSettings {
+            fps: 5,
+            smoothing: 0.0,
+            saturation: 1.0,
+            region_size: 0.1,
+            ..Default::default()
+        }
+    }
+
+    /// Frames the default hold takes at `bar_settings`' frame rate.
+    const HOLD: usize = 10;
+
+    #[test]
+    fn side_bars_are_cut_once_they_stay() {
+        let settings = bar_settings();
+        let mut mapper = left_edge();
+        let frame = pillarboxed(3, [255, 0, 0]);
+        for _ in 1..HOLD {
+            assert_eq!(mapper.map(&frame, &settings)[0].rgb, [0; 3]);
+        }
+        assert_eq!(mapper.map(&frame, &settings)[0].rgb, [65535, 0, 0]);
+    }
+
+    #[test]
+    fn bars_beyond_the_limit_stay() {
+        let settings = SyncSettings {
+            black_bars: 0.1,
+            ..bar_settings()
+        };
+        let mut mapper = left_edge();
+        for _ in 0..HOLD * 2 {
+            assert_eq!(
+                mapper.map(&pillarboxed(3, [255, 0, 0]), &settings)[0].rgb,
+                [0; 3]
+            );
+        }
+    }
+
+    #[test]
+    fn bars_hold_through_dark_scenes_and_one_sided_content() {
+        let settings = bar_settings();
+        let mut mapper = left_edge();
+        for _ in 0..HOLD {
+            mapper.map(&pillarboxed(3, [255, 0, 0]), &settings);
+        }
+        assert_eq!(mapper.bars_x.current, 3);
+        // A black frame says nothing about the bars.
+        mapper.map(&pillarboxed(0, [0; 3]), &settings);
+        let mut subtitle = pillarboxed(3, [255, 0, 0]);
+        subtitle.data[..3].copy_from_slice(&[255; 3]);
+        mapper.map(&subtitle, &settings);
+        assert_eq!(mapper.bars_x.current, 3);
+        // Picture on both sides: the bars are gone at once.
+        mapper.map(&pillarboxed(0, [0, 0, 255]), &settings);
+        assert_eq!(mapper.bars_x.current, 0);
     }
 
     #[test]

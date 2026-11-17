@@ -23,8 +23,10 @@ special permissions.
 
 Each light in the [entertainment area](bridge.md#entertainment-areas) has a position. Its left-right coordinate becomes
 a horizontal position on the screen and its height a vertical one. lightmime averages the pixels in a square around
-that point (`region_size` of the screen), in linear light so that bright and dark parts mix the way light does. Then
-it applies [saturation, smoothing and brightness](tuning.md).
+that point (`region_size` of the screen), in linear light so that bright and dark parts mix the way light does.
+Black bars around the picture are left out first: dark rows or columns at both opposite edges that stay for about two
+seconds, up to `black_bars` of each edge, and as thick as the thinner of the two, since film bars are the same on both
+sides. Subtitles in one bar or a dark scene keep them; picture in both bars ends them at once. Then it applies [saturation, smoothing and brightness](tuning.md).
 
 ## 3. Streaming
 
