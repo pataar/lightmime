@@ -115,11 +115,11 @@ impl BarTracker {
         };
         let candidate = a.min(b);
         if a.max(b) < self.current {
-            // The picture reaches into both bars: the film ended or went full screen. Subtitles
-            // in one bar don't count.
+            // The picture reaches into both bars: the film ended or went full screen.
             self.current = candidate;
             self.seen = 0;
-        } else if candidate == self.current {
+        } else if candidate <= self.current {
+            // Unchanged, or only one bar has content, such as subtitles, however long they stay.
             self.seen = 0;
         } else {
             if candidate != self.pending {
@@ -464,7 +464,9 @@ mod tests {
         mapper.map(&pillarboxed(0, [0; 3]), &settings);
         let mut subtitle = pillarboxed(3, [255, 0, 0]);
         subtitle.data[..3].copy_from_slice(&[255; 3]);
-        mapper.map(&subtitle, &settings);
+        for _ in 0..HOLD * 2 {
+            mapper.map(&subtitle, &settings);
+        }
         assert_eq!(mapper.bars_x.current, 3);
         // Picture on both sides: the bars are gone at once.
         mapper.map(&pillarboxed(0, [0, 0, 255]), &settings);
