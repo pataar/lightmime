@@ -39,14 +39,50 @@ const GAMESCOPE_NODE: &str = "gamescope";
 /// A running screen capture. Dropping it stops the pipeline and closes the
 /// portal session.
 pub struct ScreenCapture {
+    capture: Capture,
+    /// `None` for gamescope, which is read without the portal.
+    portal: Option<Portal>,
+}
+
+/// The portal session a capture came from.
+struct Portal {
+    session: Session<Screencast>,
+    // Keeps the PipeWire connection open for the lifetime of the pipeline.
+    _fd: OwnedFd,
+}
+
+/// A playing capture pipeline. Dropping it stops the pipeline.
+struct Capture {
     pipeline: gst::Pipeline,
     limit: gst::Element,
     rate: gst::Element,
     latest: Arc<Mutex<Option<Frame>>>,
-    /// `None` for gamescope, which is read without the portal.
-    session: Option<Session<Screencast>>,
-    // Keeps the portal's PipeWire connection open for the lifetime of the pipeline.
-    _pipewire_fd: Option<OwnedFd>,
+}
+
+impl Capture {
+    /// Build the pipeline reading from `pipewiresrc` with `target` (which
+    /// stream to connect to) and start it.
+    fn start(target: &str, config: &CaptureConfig, max_fps: u32) -> Result<Self> {
+        let latest = Arc::new(Mutex::new(None));
+        let source = format!("pipewiresrc {target} do-timestamp=true keepalive-time=1000");
+        let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
+        if let Err(e) = pipeline.set_state(gst::State::Playing) {
+            let _ = pipeline.set_state(gst::State::Null);
+            return Err(e).context("starting the capture pipeline");
+        }
+        Ok(Self {
+            pipeline,
+            limit,
+            rate,
+            latest,
+        })
+    }
+}
+
+impl Drop for Capture {
+    fn drop(&mut self) {
+        let _ = self.pipeline.set_state(gst::State::Null);
+    }
 }
 
 impl ScreenCapture {
@@ -96,12 +132,11 @@ impl ScreenCapture {
         match result {
             Ok(cast) => Ok((
                 Self {
-                    pipeline: cast.pipeline,
-                    limit: cast.limit,
-                    rate: cast.rate,
-                    latest: cast.latest,
-                    session: Some(session),
-                    _pipewire_fd: Some(cast.fd),
+                    capture: cast.capture,
+                    portal: Some(Portal {
+                        session,
+                        _fd: cast.fd,
+                    }),
                 },
                 cast.restore_token,
             )),
@@ -150,20 +185,15 @@ impl ScreenCapture {
             .await
             .context("opening the PipeWire remote")?;
 
-        let latest = Arc::new(Mutex::new(None));
-        let source = format!(
-            "pipewiresrc fd={} path={node_id} do-timestamp=true keepalive-time=1000",
-            fd.as_raw_fd()
-        );
-        let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
-        play(&pipeline)?;
+        let capture = Capture::start(
+            &format!("fd={} path={node_id}", fd.as_raw_fd()),
+            config,
+            max_fps,
+        )?;
 
         tracing::info!("capturing PipeWire node {node_id}");
         Ok(Started {
-            pipeline,
-            limit,
-            rate,
-            latest,
+            capture,
             fd,
             restore_token: new_token,
         })
@@ -173,28 +203,23 @@ impl ScreenCapture {
     /// its own (Steam records and streams from it), so there is nothing to ask
     /// for; inside a Flatpak this needs access to the PipeWire socket.
     fn start_gamescope(config: &CaptureConfig, max_fps: u32) -> Result<Self> {
-        let latest = Arc::new(Mutex::new(None));
-        let source = format!(
-            "pipewiresrc target-object={GAMESCOPE_NODE} autoconnect=false do-timestamp=true keepalive-time=1000"
-        );
-        let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
-        play(&pipeline)
-            .context("connecting to gamescope's PipeWire stream (is this a gamescope session?)")?;
+        let capture = Capture::start(
+            &format!("target-object={GAMESCOPE_NODE} autoconnect=false"),
+            config,
+            max_fps,
+        )
+        .context("connecting to gamescope's PipeWire stream (is this a gamescope session?)")?;
 
         tracing::info!("capturing gamescope's PipeWire stream");
         Ok(Self {
-            pipeline,
-            limit,
-            rate,
-            latest,
-            session: None,
-            _pipewire_fd: None,
+            capture,
+            portal: None,
         })
     }
 
     /// A handle for reading frames from another thread.
     pub fn frame_source(&self) -> FrameSource {
-        FrameSource(self.latest.clone())
+        FrameSource(self.capture.latest.clone())
     }
 
     /// Change how many frames per second are captured, to follow the sync
@@ -203,19 +228,20 @@ impl ScreenCapture {
     /// A new rate makes pipewiresrc reconnect the stream, so the caps are only touched when it changes.
     pub fn set_max_fps(&self, fps: u32) {
         let fps = fps.clamp(1, MAX_FPS);
-        if self.rate.property::<i32>("max-rate") == fps as i32 {
+        let Capture { rate, limit, .. } = &self.capture;
+        if rate.property::<i32>("max-rate") == fps as i32 {
             return;
         }
-        self.rate.set_property("max-rate", fps as i32);
+        rate.set_property("max-rate", fps as i32);
         match framerate_caps(fps).parse::<gst::Caps>() {
-            Ok(caps) => self.limit.set_property("caps", caps),
+            Ok(caps) => limit.set_property("caps", caps),
             Err(err) => tracing::warn!("framerate caps for {fps} fps: {err}"),
         }
     }
 
     /// Report a pipeline error, if one happened since the last call.
     pub fn poll_error(&self) -> Option<String> {
-        let bus = self.pipeline.bus()?;
+        let bus = self.capture.pipeline.bus()?;
         while let Some(message) = bus.pop() {
             if let gst::MessageView::Error(err) = message.view() {
                 return Some(format!("{} ({:?})", err.error(), err.debug()));
@@ -225,36 +251,18 @@ impl ScreenCapture {
     }
 
     pub async fn stop(self) {
-        let _ = self.pipeline.set_state(gst::State::Null);
-        if let Some(session) = self.session.as_ref() {
-            let _ = session.close().await;
+        drop(self.capture);
+        if let Some(portal) = self.portal {
+            let _ = portal.session.close().await;
         }
     }
 }
 
-/// Start `pipeline`, tearing it down again if that fails.
-fn play(pipeline: &gst::Pipeline) -> Result<()> {
-    if let Err(e) = pipeline.set_state(gst::State::Playing) {
-        let _ = pipeline.set_state(gst::State::Null);
-        return Err(e).context("starting the capture pipeline");
-    }
-    Ok(())
-}
-
 /// What [`ScreenCapture::start_in`] sets up inside a portal session.
 struct Started {
-    pipeline: gst::Pipeline,
-    limit: gst::Element,
-    rate: gst::Element,
-    latest: Arc<Mutex<Option<Frame>>>,
+    capture: Capture,
     fd: OwnedFd,
     restore_token: Option<String>,
-}
-
-impl Drop for ScreenCapture {
-    fn drop(&mut self) {
-        let _ = self.pipeline.set_state(gst::State::Null);
-    }
 }
 
 fn build_pipeline(
