@@ -22,6 +22,9 @@ finish-args:
   # Read-only, to show whether the Background portal's login item exists. The portal writes it, not lightmime.
   - --filesystem=xdg-config/autostart:ro
   # Screen capture needs no permission here: the ScreenCast portal asks the user and hands over a PipeWire fd.
+  # Except under gamescope (SteamOS Game Mode), which has no portal: `source = "gamescope"` reads its stream from the
+  # PipeWire daemon directly.
+  - --filesystem=xdg-run/pipewire-0
 modules:
   - name: lightmime
     buildsystem: simple

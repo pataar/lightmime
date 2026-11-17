@@ -1,5 +1,7 @@
 //! Screen capture through the XDG ScreenCast portal (works on Wayland and X11)
-//! and PipeWire, using GStreamer to convert and downscale frames.
+//! and PipeWire, using GStreamer to convert and downscale frames. Under
+//! gamescope (Game Mode on the Steam Deck), which has no ScreenCast portal, it reads
+//! gamescope's own PipeWire stream instead.
 
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::{Arc, Mutex};
@@ -31,6 +33,9 @@ impl FrameSource {
     }
 }
 
+/// The PipeWire node gamescope publishes its output on (the name of its stream).
+const GAMESCOPE_NODE: &str = "gamescope";
+
 /// A running screen capture. Dropping it stops the pipeline and closes the
 /// portal session.
 pub struct ScreenCapture {
@@ -38,9 +43,10 @@ pub struct ScreenCapture {
     limit: gst::Element,
     rate: gst::Element,
     latest: Arc<Mutex<Option<Frame>>>,
-    session: Session<Screencast>,
-    // Keeps the PipeWire connection open for the lifetime of the pipeline.
-    _pipewire_fd: OwnedFd,
+    /// `None` for gamescope, which is read without the portal.
+    session: Option<Session<Screencast>>,
+    // Keeps the portal's PipeWire connection open for the lifetime of the pipeline.
+    _pipewire_fd: Option<OwnedFd>,
 }
 
 impl ScreenCapture {
@@ -49,6 +55,9 @@ impl ScreenCapture {
     /// With a `restore_token` from an earlier run the portal reuses that
     /// choice without asking. Returns the capture plus the token to store for
     /// next time. Frames above `max_fps` are dropped; see [`Self::set_max_fps`].
+    ///
+    /// With [`SourceKind::Gamescope`] there is no portal, picker or token:
+    /// gamescope's stream is read straight from the PipeWire daemon.
     pub async fn start(
         config: &CaptureConfig,
         max_fps: u32,
@@ -67,6 +76,11 @@ impl ScreenCapture {
     ) -> Result<(Self, Option<String>)> {
         gst::init().context("initialising GStreamer")?;
 
+        let source = match config.source {
+            SourceKind::Monitor => SourceType::Monitor,
+            SourceKind::Window => SourceType::Window,
+            SourceKind::Gamescope => return Ok((Self::start_gamescope(config, max_fps)?, None)),
+        };
         let portal = Screencast::new()
             .await
             .context("connecting to the ScreenCast portal")?;
@@ -76,7 +90,7 @@ impl ScreenCapture {
             .context("creating a screen-cast session")?;
         // The portal keeps a session open until it is closed, not when it is dropped.
         let result = tokio::select! {
-            result = Self::start_in(&portal, &session, config, max_fps, restore_token) => result,
+            result = Self::start_in(&portal, &session, source, config, max_fps, restore_token) => result,
             () = cancel => Err(anyhow!("cancelled while choosing a screen")),
         };
         match result {
@@ -86,8 +100,8 @@ impl ScreenCapture {
                     limit: cast.limit,
                     rate: cast.rate,
                     latest: cast.latest,
-                    session,
-                    _pipewire_fd: cast.fd,
+                    session: Some(session),
+                    _pipewire_fd: Some(cast.fd),
                 },
                 cast.restore_token,
             )),
@@ -101,14 +115,11 @@ impl ScreenCapture {
     async fn start_in(
         portal: &Screencast,
         session: &Session<Screencast>,
+        source: SourceType,
         config: &CaptureConfig,
         max_fps: u32,
         restore_token: Option<&str>,
     ) -> Result<Started> {
-        let source = match config.source {
-            SourceKind::Monitor => SourceType::Monitor,
-            SourceKind::Window => SourceType::Window,
-        };
         portal
             .select_sources(
                 session,
@@ -145,10 +156,7 @@ impl ScreenCapture {
             fd.as_raw_fd()
         );
         let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
-        if let Err(e) = pipeline.set_state(gst::State::Playing) {
-            let _ = pipeline.set_state(gst::State::Null);
-            return Err(e).context("starting the capture pipeline");
-        }
+        play(&pipeline)?;
 
         tracing::info!("capturing PipeWire node {node_id}");
         Ok(Started {
@@ -158,6 +166,29 @@ impl ScreenCapture {
             latest,
             fd,
             restore_token: new_token,
+        })
+    }
+
+    /// Capture gamescope's output. gamescope offers it as a PipeWire stream of
+    /// its own (Steam records and streams from it), so there is nothing to ask
+    /// for; inside a Flatpak this needs access to the PipeWire socket.
+    fn start_gamescope(config: &CaptureConfig, max_fps: u32) -> Result<Self> {
+        let latest = Arc::new(Mutex::new(None));
+        let source = format!(
+            "pipewiresrc target-object={GAMESCOPE_NODE} autoconnect=false do-timestamp=true keepalive-time=1000"
+        );
+        let (pipeline, limit, rate) = build_pipeline(&source, config, max_fps, latest.clone())?;
+        play(&pipeline)
+            .context("connecting to gamescope's PipeWire stream (is this a gamescope session?)")?;
+
+        tracing::info!("capturing gamescope's PipeWire stream");
+        Ok(Self {
+            pipeline,
+            limit,
+            rate,
+            latest,
+            session: None,
+            _pipewire_fd: None,
         })
     }
 
@@ -195,8 +226,19 @@ impl ScreenCapture {
 
     pub async fn stop(self) {
         let _ = self.pipeline.set_state(gst::State::Null);
-        let _ = self.session.close().await;
+        if let Some(session) = self.session.as_ref() {
+            let _ = session.close().await;
+        }
     }
+}
+
+/// Start `pipeline`, tearing it down again if that fails.
+fn play(pipeline: &gst::Pipeline) -> Result<()> {
+    if let Err(e) = pipeline.set_state(gst::State::Playing) {
+        let _ = pipeline.set_state(gst::State::Null);
+        return Err(e).context("starting the capture pipeline");
+    }
+    Ok(())
 }
 
 /// What [`ScreenCapture::start_in`] sets up inside a portal session.

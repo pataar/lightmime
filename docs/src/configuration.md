@@ -31,7 +31,7 @@ An annotated example is in
 
 | Key | Default | Meaning |
 |---|---|---|
-| `source` | `"monitor"` | What the screen picker offers: `"monitor"` or `"window"`. |
+| `source` | `"monitor"` | What the screen picker offers: `"monitor"` or `"window"`; or `"gamescope"` to read gamescope's own stream without a picker ([SteamOS Game Mode](steamos.md#game-mode)). |
 | `width`, `height` | `64`, `36` | Frames are scaled down to this size before the colours are taken. More gives no visible gain. |
 
 ## `[sync]`

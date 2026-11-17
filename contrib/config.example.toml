@@ -9,7 +9,7 @@ client_key = ""
 entertainment_config_id = ""
 
 [capture]
-# "monitor" or "window"
+# "monitor" or "window" (the screen picker offers that), or "gamescope" (SteamOS Game Mode, no picker)
 source = "monitor"
 # Frames are downscaled to this size before sampling.
 width = 64

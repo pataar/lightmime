@@ -21,7 +21,7 @@ gpui and the portal support it, but nothing is X11-specific. No Windows/macOS.
 ```
 crates/lightmime-core/     library, no UI, no MQTT
   src/config.rs            Config, BridgeConfig, CaptureConfig, SyncSettings (serde, defaults, sanitized())
-  src/capture.rs           portal session + GStreamer pipeline (pipewiresrc → appsink), FrameSource
+  src/capture.rs           portal session (or gamescope's PipeWire node) + GStreamer pipeline (pipewiresrc → appsink), FrameSource
   src/color.rs             Frame, Zone (channel position → screen point), ColorMapper (sample, saturate, smooth, brightness)
   src/hue/api.rs           CLIP v2 REST: pair(), discover() (discovery.meethue.com), Bridge (areas, start/stop streaming, PSK identity)
   src/hue/stream.rs        EntertainmentStream: DTLS 1.2 PSK + HueStream v2 messages (blocking)
