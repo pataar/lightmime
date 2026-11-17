@@ -33,13 +33,14 @@ open-source ways to sync Hue lights with a Linux screen.
 | | lightmime | Lumux | HyperHDR |
 |---|---|---|---|
 | Written in | Rust | Python, GTK4 / libadwaita | C++ |
-| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, LED strips over serial or SPI, and more |
+| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, Home Assistant lights, LED strips over serial or SPI, and more |
 | Screen capture on Wayland | Portal + PipeWire | Portal | Portal + PipeWire, also USB HDMI grabbers |
+| Leaves out black bars | Yes | Yes | Yes |
 | Interface | Window, tray icon, CLI | Window, tray icon | Web interface |
 | Runs headless | Yes, also as a [systemd user service](background.md) | No | Yes, but PipeWire capture needs it to run as a user application, not a system service |
 | Home Assistant | MQTT discovery | No | MQTT |
 | Platforms | Linux | Linux | Linux, Windows, macOS |
-| Install | Flatpak, binaries | Flathub, pip | Packages, binaries |
+| Install | Flatpak, binaries, crates.io | Flathub, from source with pip | Packages, binaries |
 | Licence | MIT or Apache-2.0 | MIT | MIT |
 
 **Lumux** is the closest in scope: a GTK desktop app for Hue entertainment areas on Wayland, on Flathub. It
