@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/pataar/lightmime/compare/v0.4.1...v0.5.0) - 2026-11-17
+
+### Added
+
+- [**breaking**] name the lights on the room map's dots ([#39](https://github.com/pataar/lightmime/pull/39))
+
+### Other
+
+- move to Rust 1.100, use what it stabilised, add workspace lints ([#34](https://github.com/pataar/lightmime/pull/34))
+
 ## [0.4.1](https://github.com/pataar/lightmime/compare/v0.4.0...v0.4.1) - 2026-11-09
 
 ### Added
