@@ -103,8 +103,9 @@ use nothing else, so a GTK, Qt or web frontend can do the same.
 | | lightmime | [Lumux](https://github.com/enginkirmaci/lumux) | [HyperHDR](https://github.com/awawa-dev/HyperHDR) |
 |---|---|---|---|
 | Written in | Rust | Python (GTK4 / libadwaita) | C++ |
-| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, LED strips over serial/SPI, and more |
+| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, Home Assistant lights, LED strips over serial/SPI, and more |
 | Screen capture on Wayland | Portal + PipeWire | Portal | Portal + PipeWire, also USB HDMI grabbers |
+| Leaves out black bars | Yes | Yes | Yes |
 | Interface | Window, tray, CLI | Window, tray | Web interface |
 | Runs headless | Yes, also as a systemd user service | No | Yes, but PipeWire capture needs it to run as a user app, not a system service |
 | Home Assistant | MQTT discovery | No | MQTT |
