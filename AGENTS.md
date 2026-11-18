@@ -133,7 +133,8 @@ packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bu
   arrives, then wipes into sync left to right; on stop it wipes back before
   closing, so the stop takes ~1.2 s longer.
 - Channel positions: x = left/right, y = front/back (ignored), z = bottom/top,
-  all in -1..1. `Zone::from_channel` maps x and z to screen coordinates.
+  all in -1..1. `Zone::for_area` maps x and z to screen coordinates, scaled per axis
+  so the outermost light (counted from the middle) lands on the screen's edge, at most 4×.
 - The bridge uses a certificate from Signify's own CA; the REST client accepts
   invalid certs on purpose (LAN only).
 

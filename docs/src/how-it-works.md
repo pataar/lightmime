@@ -6,10 +6,14 @@ lightmime is a pipeline of three stages, run every frame.
 
 The [XDG ScreenCast portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.ScreenCast.html)
 asks you which screen to share and hands lightmime a PipeWire stream of it, with a restore token so it can skip the
-question next time. GStreamer receives the stream and scales it down to 64 × 36 pixels of RGB:
+question next time. GStreamer receives the stream and scales it down to 64 × 36 pixels of RGB, in two steps: first
+it picks a grid of 256 × 144 samples spread over the whole screen, then it averages those in linear light. So a small
+bright detail such as a subtitle does not blink in and out of the lights, for a fraction of a millisecond per frame:
 
 ```text
-pipewiresrc ! videoconvert ! videoscale ! video/x-raw,format=RGB,width=64,height=36 ! appsink
+pipewiresrc ! videoscale method=nearest-neighbour ! 256×144
+            ! videoscale method=bilinear2 gamma-decode=true ! 64×36
+            ! videoconvert ! RGB ! appsink
 ```
 
 The portal is the only way to capture the screen on Wayland, and it works the same in a Flatpak, so lightmime needs no
@@ -18,9 +22,12 @@ special permissions.
 ## 2. Mapping
 
 Each light in the [entertainment area](bridge.md#entertainment-areas) has a position. Its left-right coordinate becomes
-a horizontal position on the screen and its height a vertical one. lightmime averages the pixels in a square around
-that point (`region_size` of the screen), in linear light so that bright and dark parts mix the way light does. Then
-it applies [saturation, smoothing and brightness](tuning.md).
+a horizontal position on the screen and its height a vertical one, stretched so the outermost lights land on the
+screen's edges. lightmime averages the pixels in a square around
+that point (`region_size` of the screen), in linear light so that bright and dark parts mix the way light does.
+Black bars around the picture are left out first: dark rows or columns at both opposite edges that stay for about two
+seconds, up to `black_bars` of each edge, and as thick as the thinner of the two, since film bars are the same on both
+sides. Subtitles in one bar or a dark scene keep them; picture in both bars ends them at once. Then it applies [saturation, smoothing and brightness](tuning.md).
 
 ## 3. Streaming
 

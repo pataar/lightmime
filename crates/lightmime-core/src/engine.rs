@@ -332,6 +332,8 @@ impl Session {
 impl Actor {
     async fn run(mut self, mut commands: mpsc::UnboundedReceiver<Command>) {
         let mut health = tokio::time::interval(Duration::from_secs(1));
+        // The tick only runs while streaming; skip the ticks missed while idle instead of bursting them.
+        health.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
                 command = commands.recv() => match command {
@@ -344,7 +346,7 @@ impl Actor {
                         session.lease.capture.set_max_fps(fps);
                     }
                 }
-                _ = health.tick() => {
+                _ = health.tick(), if matches!(self.phase, Phase::Active(_)) => {
                     let error = match &self.phase {
                         Phase::Active(session) => session.lease.capture.poll_error(),
                         _ => None,
@@ -644,7 +646,7 @@ impl Opening {
         }
         let identity = bridge.psk_identity().await;
 
-        let zones: Vec<Zone> = area.channels.iter().map(Zone::from_channel).collect();
+        let zones = Zone::for_area(&area.channels);
         self.status.send_modify(|s| {
             s.area.clone_from(&area.metadata.name);
             s.channels = zones.len();

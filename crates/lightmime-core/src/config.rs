@@ -90,6 +90,8 @@ pub const MAX_FPS: u32 = 60;
 pub const MAX_SMOOTHING: f32 = 0.95;
 /// Upper bound for [`SyncSettings::saturation`].
 pub const MAX_SATURATION: f32 = 3.0;
+/// Upper bound for [`SyncSettings::black_bars`]: 4:3 on a 32:9 screen leaves 36 % on each side.
+pub const MAX_BLACK_BARS: f32 = 0.4;
 
 /// Settings that can change while streaming.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -105,6 +107,9 @@ pub struct SyncSettings {
     pub saturation: f32,
     /// Size of the sampled screen region per light, as a fraction of the frame.
     pub region_size: f32,
+    /// Black bars up to this fraction of each edge are left out of the picture the lights
+    /// sample, so letterboxed or pillarboxed video reaches the outer lights; 0 turns it off.
+    pub black_bars: f32,
 }
 
 impl Default for SyncSettings {
@@ -115,6 +120,7 @@ impl Default for SyncSettings {
             smoothing: 0.3,
             saturation: 1.2,
             region_size: 0.3,
+            black_bars: 0.25,
         }
     }
 }
@@ -132,6 +138,7 @@ impl SyncSettings {
         self.smoothing = finite(self.smoothing, defaults.smoothing).clamp(0.0, MAX_SMOOTHING);
         self.saturation = finite(self.saturation, defaults.saturation).clamp(0.0, MAX_SATURATION);
         self.region_size = finite(self.region_size, defaults.region_size).clamp(0.05, 1.0);
+        self.black_bars = finite(self.black_bars, defaults.black_bars).clamp(0.0, MAX_BLACK_BARS);
         self
     }
 }
@@ -147,6 +154,7 @@ mod tests {
             smoothing: f32::NAN,
             saturation: f32::INFINITY,
             region_size: f32::NEG_INFINITY,
+            black_bars: f32::NAN,
             ..SyncSettings::default()
         }
         .sanitized();
@@ -155,6 +163,7 @@ mod tests {
         assert_eq!(settings.smoothing, defaults.smoothing);
         assert_eq!(settings.saturation, defaults.saturation);
         assert_eq!(settings.region_size, defaults.region_size);
+        assert_eq!(settings.black_bars, defaults.black_bars);
     }
 
     #[test]

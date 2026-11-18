@@ -27,13 +27,15 @@ latency.
 - **Made for Wayland**: capture goes through the screen-cast portal and PipeWire, on KDE Plasma, GNOME and wlroots
   compositors (Hyprland included). You pick the screen once. SteamOS Game Mode (gamescope) works without the portal;
   see [SteamOS](https://lightmime.pataar.nl/docs/steamos.html).
+- **Looks past black bars**: letterboxed films and 16:9 video on an ultrawide screen leave black bars; lightmime
+  leaves them out, so the outer lights follow the picture. See [Tuning](https://lightmime.pataar.nl/docs/tuning.html).
 - **Keybindings and status bars**: `lightmime toggle` and a Waybar module through `lightmime status --waybar --follow`.
   See [Hyprland and Omarchy](https://lightmime.pataar.nl/docs/hyprland.html).
 - **Headless if you like**: `lightmime run` as a [systemd user service](https://lightmime.pataar.nl/docs/background.html).
 - **Home Assistant, optionally**: turn on MQTT and lightmime appears as a device with a sync switch, a status sensor
   and sliders. See [Home Assistant](https://lightmime.pataar.nl/docs/home-assistant.html).
 - **Light on resources**: one Rust binary that scales each frame down to 64×36 pixels before touching it. While syncing
-  at 30 fps it uses about 1 % of one CPU core and 36 MB of memory
+  at 30 fps it uses about 1 % of one CPU core and 69 MB of memory, most of it shared with the compositor
   ([measurement](https://lightmime.pataar.nl/docs/comparison.html#resource-use)).
 
 ## Install
@@ -78,10 +80,13 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
 ## How it works
 
 1. **Capture**: ScreenCast portal → PipeWire node → GStreamer
-   (`pipewiresrc ! videoconvert ! videoscale`) → 64×36 RGB frames.
-2. **Mapping**: each entertainment channel samples the screen region matching
-   its position in the area (x = left/right, z = bottom/top), averaged in
-   linear light, then saturation, smoothing and brightness are applied.
+   (`pipewiresrc ! videoscale ! videoscale ! videoconvert`) → 64×36 RGB frames,
+   averaged in linear light over a 256×144 sample grid.
+2. **Mapping**: black bars around the picture are left out; each entertainment
+   channel samples the region matching its position in the area
+   (x = left/right, z = bottom/top, stretched so the outermost lights sample
+   the screen's edges), averaged in linear light, then saturation,
+   smoothing and brightness are applied.
 3. **Streaming**: the area is started through the CLIP v2 API, then HueStream
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port
    2100, one datagram per frame.
@@ -100,8 +105,9 @@ use nothing else, so a GTK, Qt or web frontend can do the same.
 | | lightmime | [Lumux](https://github.com/enginkirmaci/lumux) | [HyperHDR](https://github.com/awawa-dev/HyperHDR) |
 |---|---|---|---|
 | Written in | Rust | Python (GTK4 / libadwaita) | C++ |
-| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, LED strips over serial/SPI, and more |
+| Lights | Philips Hue | Philips Hue | Hue, LIFX, WLED, Home Assistant lights, LED strips over serial/SPI, and more |
 | Screen capture on Wayland | Portal + PipeWire | Portal | Portal + PipeWire, also USB HDMI grabbers |
+| Leaves out black bars | Yes | Yes | Yes |
 | Interface | Window, tray, CLI | Window, tray | Web interface |
 | Runs headless | Yes, also as a systemd user service | No | Yes, but PipeWire capture needs it to run as a user app, not a system service |
 | Home Assistant | MQTT discovery | No | MQTT |

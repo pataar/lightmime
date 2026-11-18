@@ -265,6 +265,11 @@ struct Started {
     restore_token: Option<String>,
 }
 
+/// The nearest-neighbour step's size, as a multiple of the captured frame's: 256 × 144 by default.
+/// Twice this cut the remaining flicker of a small moving object from ~50 % to ~20 %, but cost
+/// four times the CPU; each light averages hundreds of pixels, so it is not worth it.
+const PRESCALE: u32 = 4;
+
 fn build_pipeline(
     source: &str,
     config: &CaptureConfig,
@@ -277,18 +282,30 @@ fn build_pipeline(
     // Scale down before converting, so conversion runs on a few thousand
     // pixels. Buffers are not copied out of PipeWire (`always-copy`): the
     // pipeline releases them as soon as they are scaled.
+    //
+    // Scaling runs in two steps. videoscale's default is 2-tap: from 4K to 64 × 36 every output
+    // pixel reads 2 × 2 of the ~60 × 60 it covers, so small bright things (subtitles, a cursor)
+    // blink in and out of the lights. Its multi-tap filter averages every input pixel, in linear
+    // light with `gamma-decode` (else a black and white mix comes out at a fifth of its
+    // brightness, not half), but costs ~30 ms per 4K frame. So nearest-neighbour first takes a
+    // grid of samples, `PRESCALE` times the final size, and the filter averages those: ~0.3 ms
+    // per 3440 × 1440 frame.
     let max_fps = max_fps.clamp(1, MAX_FPS);
     let description = format!(
         "{source} \
          ! capsfilter name=limit caps=\"{caps}\" \
          ! videorate name=rate drop-only=true max-rate={max_fps} \
-         ! videoscale add-borders=false \
+         ! videoscale method=nearest-neighbour add-borders=false \
+         ! video/x-raw,width={sw},height={sh},pixel-aspect-ratio=1/1 \
+         ! videoscale method=bilinear2 gamma-decode=true \
          ! video/x-raw,width={w},height={h},pixel-aspect-ratio=1/1 \
          ! videoconvert ! video/x-raw,format=RGB \
          ! appsink name=sink max-buffers=1 drop=true sync=false",
         caps = framerate_caps(max_fps),
         w = config.width,
         h = config.height,
+        sw = config.width.saturating_mul(PRESCALE),
+        sh = config.height.saturating_mul(PRESCALE),
     );
     let pipeline = gst::parse::launch(&description)
         .context("building the capture pipeline (is gst-plugin-pipewire installed?)")?
@@ -304,6 +321,9 @@ fn build_pipeline(
     let rate = pipeline
         .by_name("rate")
         .ok_or_else(|| anyhow!("capture pipeline has no videorate"))?;
+    if let Some(pad) = limit.static_pad("sink") {
+        keep_mapped(&pad);
+    }
 
     sink.set_callbacks(
         gst_app::AppSinkCallbacks::builder()
@@ -319,6 +339,62 @@ fn build_pipeline(
             .build(),
     );
     Ok((pipeline, limit, rate))
+}
+
+/// Pool buffers from one stream, at most; more means the source switched pools without new caps.
+const MAX_MAPPED: usize = 16;
+
+/// Keep the memory of every buffer passing `pad` mapped, until the caps change.
+///
+/// pipewiresrc wraps the compositor's shared-memory frames as fd memory without `KEEP_MAPPED`, so the
+/// whole frame (20 MB at 3440 × 1440) is mapped and unmapped for every frame, and every mapping faults
+/// again on each row the scaler reads: about half of the capture's CPU time. One lasting mapping per
+/// pool buffer keeps GStreamer's own maps cheap. DMA-BUF memory is already kept mapped and is skipped.
+fn keep_mapped(pad: &gst::Pad) {
+    let mapped: Mutex<Vec<gst::memory::MappedMemory<gst::memory::Readable>>> = Mutex::default();
+    pad.add_probe(
+        gst::PadProbeType::BUFFER | gst::PadProbeType::EVENT_DOWNSTREAM,
+        move |_, info| {
+            let Ok(mut mapped) = mapped.lock() else {
+                return gst::PadProbeReturn::Ok;
+            };
+            match &info.data {
+                // New caps come with a new pool; let the old buffers go.
+                Some(gst::PadProbeData::Event(event)) if event.type_() == gst::EventType::Caps => {
+                    mapped.clear();
+                }
+                Some(gst::PadProbeData::Buffer(buffer)) => {
+                    // `memory()` takes a reference; `MemoryRef::to_owned` would copy the frame.
+                    for memory in (0..buffer.n_memory()).filter_map(|i| buffer.memory(i)) {
+                        let pooled = root(&memory).as_ptr();
+                        if !root(&memory).is_type("fd")
+                            || mapped.iter().any(|m| root(m.memory()).as_ptr() == pooled)
+                        {
+                            continue;
+                        }
+                        if mapped.len() >= MAX_MAPPED {
+                            mapped.clear();
+                        }
+                        // Mapping a share of the pool's memory maps the pool's memory.
+                        if let Ok(map) = memory.into_mapped_memory_readable() {
+                            mapped.push(map);
+                        }
+                    }
+                }
+                _ => {}
+            }
+            gst::PadProbeReturn::Ok
+        },
+    );
+}
+
+/// The memory `memory` is a share of, or itself.
+fn root(memory: &gst::MemoryRef) -> &gst::MemoryRef {
+    let mut root = memory;
+    while let Some(parent) = root.parent() {
+        root = parent;
+    }
+    root
 }
 
 /// Caps limiting the compositor to `fps`.
