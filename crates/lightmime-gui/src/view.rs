@@ -575,7 +575,7 @@ impl MainView {
                         .pt_1()
                         .text_xs()
                         .text_color(theme.muted)
-                        .child("Each light shows the part of the screen matching where it stands in the area; the outermost lights show its edges. Move them in the Hue app under Settings → Entertainment areas."),
+                        .child("Each light follows the part of the screen where it stands in the area. To move a light, use the Hue app: Settings → Entertainment areas."),
                 )
                 .into_any_element(),
         };
