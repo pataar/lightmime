@@ -54,14 +54,19 @@ impl BridgeConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceKind {
+    /// A whole screen, chosen in the portal's screen picker.
     Monitor,
+    /// A single window, chosen in the portal's screen picker.
     Window,
+    /// gamescope's own PipeWire stream, without the portal: Game Mode on the
+    /// Steam Deck and other gamescope sessions, which have no ScreenCast portal.
+    Gamescope,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CaptureConfig {
-    /// What the screen-cast portal offers to share.
+    /// What to capture: what the screen-cast portal offers, or gamescope's stream.
     pub source: SourceKind,
     /// Frames are downscaled to this size before colour extraction.
     pub width: u32,
@@ -159,6 +164,13 @@ mod tests {
         assert_eq!(settings.saturation, defaults.saturation);
         assert_eq!(settings.region_size, defaults.region_size);
         assert_eq!(settings.black_bars, defaults.black_bars);
+    }
+
+    #[test]
+    fn capture_source_parses_gamescope() {
+        let config: CaptureConfig =
+            serde_json::from_str(r#"{"source": "gamescope"}"#).expect("valid config");
+        assert_eq!(config.source, SourceKind::Gamescope);
     }
 
     #[test]

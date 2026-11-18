@@ -25,7 +25,8 @@ latency.
 - **A small window and a tray icon**: pair with the bridge, pick an area, start syncing and tune brightness, smoothing
   and saturation while it runs. See [Window and tray](https://lightmime.pataar.nl/docs/gui.html).
 - **Made for Wayland**: capture goes through the screen-cast portal and PipeWire, on KDE Plasma, GNOME and wlroots
-  compositors (Hyprland included). You pick the screen once.
+  compositors (Hyprland included). You pick the screen once. SteamOS Game Mode (gamescope) works without the portal;
+  see [SteamOS](https://lightmime.pataar.nl/docs/steamos.html).
 - **Looks past black bars**: letterboxed films and 16:9 video on an ultrawide screen leave black bars; lightmime
   leaves them out, so the outer lights follow the picture. See [Tuning](https://lightmime.pataar.nl/docs/tuning.html).
 - **Keybindings and status bars**: `lightmime toggle` and a Waybar module through `lightmime status --waybar --follow`.
