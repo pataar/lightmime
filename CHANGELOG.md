@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/pataar/lightmime/compare/v0.6.0...v0.7.0) - 2026-11-18
+
+### Added
+
+- [**breaking**] let the outermost lights sample the screen's edges ([#53](https://github.com/pataar/lightmime/pull/53))
+
 ## [0.6.0](https://github.com/pataar/lightmime/compare/v0.5.1...v0.6.0) - 2026-11-17
 
 ### Added
