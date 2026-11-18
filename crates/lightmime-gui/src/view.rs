@@ -570,6 +570,13 @@ impl MainView {
                         .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(area.metadata.name.clone()))
                         .child(div().text_xs().text_color(theme.muted).child(detail))
                 }))
+                .child(
+                    div()
+                        .pt_1()
+                        .text_xs()
+                        .text_color(theme.muted)
+                        .child("Each light shows the part of the screen matching where it stands in the area; the outermost lights show its edges. Move them in the Hue app under Settings → Entertainment areas."),
+                )
                 .into_any_element(),
         };
         card(theme).child(header).child(body)
