@@ -136,8 +136,8 @@ impl BarTracker {
     }
 }
 
-/// Where on the screen a channel samples, derived from its position in the
-/// entertainment area: x runs left to right, z bottom to top.
+/// Where on the screen a channel samples (0..1 from the top left), derived from its position in
+/// the entertainment area: x runs left to right, z bottom to top.
 #[derive(Debug, Clone, Copy)]
 pub struct Zone {
     pub channel_id: u8,
@@ -145,17 +145,35 @@ pub struct Zone {
     pub y: f32,
 }
 
+/// Smallest extent of the area on an axis, so lights at nearly one height (or one left-right
+/// position) are not spread over the whole screen: positions stretch at most four times.
+const MIN_EXTENT: f32 = 0.25;
+
 impl Zone {
+    /// Where each of an area's channels samples. The outermost lights mark the screen's edges, on
+    /// each side of its centre: lights placed beside, above or below the screen sample its edges,
+    /// not the middle of the picture.
     #[expect(
         clippy::manual_midpoint,
         reason = "maps -1..1 to 0..1, like `y` below; `midpoint` would hide that"
     )]
-    pub fn from_channel(channel: &Channel) -> Self {
-        Self {
-            channel_id: channel.channel_id,
-            x: ((channel.position.x as f32 + 1.0) / 2.0).clamp(0.0, 1.0),
-            y: ((1.0 - channel.position.z as f32) / 2.0).clamp(0.0, 1.0),
-        }
+    pub fn for_area(channels: &[Channel]) -> Vec<Self> {
+        let extent = |axis: fn(&Channel) -> f64| {
+            channels
+                .iter()
+                .map(|channel| axis(channel).abs() as f32)
+                .fold(MIN_EXTENT, f32::max)
+        };
+        let width = extent(|channel| channel.position.x);
+        let height = extent(|channel| channel.position.z);
+        channels
+            .iter()
+            .map(|channel| Self {
+                channel_id: channel.channel_id,
+                x: ((channel.position.x as f32 / width + 1.0) / 2.0).clamp(0.0, 1.0),
+                y: ((1.0 - channel.position.z as f32 / height) / 2.0).clamp(0.0, 1.0),
+            })
+            .collect()
     }
 }
 
@@ -473,18 +491,65 @@ mod tests {
         assert_eq!(mapper.bars_x.current, 0);
     }
 
+    fn area(positions: &[(f64, f64)]) -> Vec<(f32, f32)> {
+        let channels: Vec<Channel> = positions
+            .iter()
+            .zip(0..)
+            .map(|(&(x, z), channel_id)| Channel {
+                channel_id,
+                position: crate::hue::Position { x, y: 0.0, z },
+                members: Vec::new(),
+            })
+            .collect();
+        Zone::for_area(&channels)
+            .iter()
+            .map(|zone| (zone.x, zone.y))
+            .collect()
+    }
+
+    fn assert_near(actual: &[(f32, f32)], expected: &[(f32, f32)]) {
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-6;
+        assert!(
+            actual.len() == expected.len()
+                && actual
+                    .iter()
+                    .zip(expected)
+                    .all(|(a, e)| near(a.0, e.0) && near(a.1, e.1)),
+            "{actual:?} != {expected:?}"
+        );
+    }
+
     #[test]
-    fn channel_position_maps_to_screen() {
-        let channel = Channel {
-            channel_id: 1,
-            position: crate::hue::Position {
-                x: -1.0,
-                y: 0.0,
-                z: 1.0,
-            },
-            members: Vec::new(),
-        };
-        let zone = Zone::from_channel(&channel);
-        assert_eq!((zone.x, zone.y), (0.0, 0.0));
+    fn an_area_spanning_the_room_maps_as_it_stands() {
+        assert_near(
+            &area(&[(-1.0, 1.0), (0.5, 0.0), (1.0, -1.0)]),
+            &[(0.0, 0.0), (0.75, 0.5), (1.0, 1.0)],
+        );
+    }
+
+    #[test]
+    fn the_outermost_lights_mark_the_screen_edges() {
+        assert_near(
+            &area(&[(-0.5, 0.0), (0.25, 0.5), (0.0, -0.25)]),
+            &[(0.0, 0.5), (0.75, 0.0), (0.5, 0.75)],
+        );
+    }
+
+    #[test]
+    fn a_strip_along_the_top_keeps_its_order() {
+        assert_near(
+            &area(&[(-0.4, 0.5), (-0.2, 0.5), (0.0, 0.5), (0.2, 0.5), (0.4, 0.5)]),
+            &[(0.0, 0.0), (0.25, 0.0), (0.5, 0.0), (0.75, 0.0), (1.0, 0.0)],
+        );
+    }
+
+    #[test]
+    fn a_single_light_samples_the_edge_on_its_side() {
+        assert_near(&area(&[(0.3, 0.0)]), &[(1.0, 0.5)]);
+    }
+
+    #[test]
+    fn lights_at_one_height_are_not_spread_over_the_screen() {
+        assert_near(&area(&[(-1.0, 0.1), (1.0, 0.1)]), &[(0.0, 0.3), (1.0, 0.3)]);
     }
 }

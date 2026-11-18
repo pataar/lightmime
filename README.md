@@ -83,7 +83,8 @@ cp -r assets/icons/hicolor ~/.local/share/icons/
    averaged in linear light over a 256×144 sample grid.
 2. **Mapping**: black bars around the picture are left out; each entertainment
    channel samples the region matching its position in the area
-   (x = left/right, z = bottom/top), averaged in linear light, then saturation,
+   (x = left/right, z = bottom/top, stretched so the outermost lights sample
+   the screen's edges), averaged in linear light, then saturation,
    smoothing and brightness are applied.
 3. **Streaming**: the area is started through the CLIP v2 API, then HueStream
    v2 messages go out over DTLS 1.2 (PSK, `PSK-AES128-GCM-SHA256`) to UDP port

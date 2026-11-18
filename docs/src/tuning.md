@@ -21,8 +21,10 @@ Three more settings are only in the config file:
 ## Tips
 
 - For films, try smoothing at 40–60 % and saturation at 130–150 %. For games, smoothing at 10–20 %.
-- A light that should show the far edge of the screen needs to sit at the edge of the area in the Hue app. Positions
-  near the middle sample the middle of the screen.
+- The outermost lights in the area show the edges of the screen; see
+  [Entertainment areas](bridge.md#entertainment-areas). A light that shows too much of the middle of the picture
+  sits closer to the middle than the light furthest out on that axis (left and right count together, as do top
+  and bottom); move it outward in the Hue app.
 - Black bars, at the top and bottom of a wide film or at the sides of a 16:9 video on an ultrawide screen, are left
   out of the picture after they have stayed about two seconds. Bars thicker than `black_bars` stay in, so a scene
   that is mostly dark is not mistaken for bars.
