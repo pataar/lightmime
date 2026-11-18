@@ -646,7 +646,7 @@ impl Opening {
         }
         let identity = bridge.psk_identity().await;
 
-        let zones: Vec<Zone> = area.channels.iter().map(Zone::from_channel).collect();
+        let zones = Zone::for_area(&area.channels);
         self.status.send_modify(|s| {
             s.area.clone_from(&area.metadata.name);
             s.channels = zones.len();

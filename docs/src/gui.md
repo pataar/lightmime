@@ -14,7 +14,7 @@ The window follows your desktop's light or dark style. From top to bottom:
 - **Bridge**: [pairing](bridge.md#pairing), or the paired bridge and **Forget**.
 - **Entertainment area**: the bridge's [areas](bridge.md#entertainment-areas); click one to sync to it. Switching
   areas while syncing restarts the sync on the new one. **Refresh** reloads the list after you change areas in the Hue
-  app.
+  app. A note below the list says where to move the lights, which decides the part of the screen each one shows.
 - **Tuning**: brightness, smoothing and saturation; see [Tuning](tuning.md). Changes apply to the next frame and are
   saved.
 - **Start at login**: starts lightmime in the tray (`lightmime gui --hidden`) when you log in. Syncing waits for you,

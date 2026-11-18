@@ -44,8 +44,16 @@ which part of the screen it shows:
 - low to high in the area is bottom to top on the screen;
 - front and back are ignored.
 
-So a light strip behind the TV, split into segments, gets the colours along the edges of the picture, and a lamp to
-the left of the couch gets the left side. Place the lights in the Hue app as they really stand around the screen.
+The outermost lights mark the edges of the screen. Of all lights, the one furthest from the middle to the left or right
+gets that edge, and the one furthest above or below the middle gets the top or bottom edge. The rest are stretched out
+by the same amount, so the middle of the area stays the middle of the screen: if the furthest light on the left sits at
+-0.8, a light at 0.6 on the right lands three quarters of the way to the right edge. So lights beside, above or
+below the screen show the edge of the picture nearest to them, not its middle, wherever they sit in the area. A light
+strip behind the TV, split into segments, gets the colours along the edges of the picture, and a lamp to the left of
+the couch gets the left side. Place the lights in the Hue app as they really stand around the screen.
+
+Positions stretch at most four times, so lights that all stand close to the middle of the area, or at nearly the same
+height, are not spread over the whole screen. The dots on the window's room map show where each light samples the screen.
 
 Choose the area in the window, or:
 

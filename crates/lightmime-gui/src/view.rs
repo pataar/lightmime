@@ -570,6 +570,13 @@ impl MainView {
                         .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(area.metadata.name.clone()))
                         .child(div().text_xs().text_color(theme.muted).child(detail))
                 }))
+                .child(
+                    div()
+                        .pt_1()
+                        .text_xs()
+                        .text_color(theme.muted)
+                        .child("Each light follows the part of the screen where it stands in the area. To move a light, use the Hue app: Settings → Entertainment areas."),
+                )
                 .into_any_element(),
         };
         card(theme).child(header).child(body)
