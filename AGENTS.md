@@ -51,8 +51,7 @@ docs/                      Pages site: build.sh assembles site/ (landing page, C
 packaging/aur/             PKGBUILD for `lightmime-bin`, update.sh (version + checksums), publish.sh (push to the AUR);
                            not on the AUR yet (registration closed), so the docs do not mention it
 packaging/linux/           metainfo, Flatpak manifest + launcher, flatpak.sh (bundle), flatpak-repo.sh (site repo), apt build deps
-.github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release),
-                           dependabot-auto-merge.yml (non-major updates squash-merge once `check` passes)
+.github/workflows/         ci.yml, docs.yml (Pages), release.yml (tag → binaries + Flatpak → GitHub release)
 ```
 
 ## Architecture rules
